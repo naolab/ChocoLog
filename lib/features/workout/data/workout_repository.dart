@@ -197,6 +197,31 @@ class WorkoutRepository {
         .toList(growable: false);
   }
 
+  Future<List<ExerciseSetValue>> getSessionSets({
+    required String sessionId,
+    required String equipmentId,
+  }) async {
+    final record =
+        await (_database.select(_database.exerciseRecords)
+              ..where(
+                (row) =>
+                    row.workoutSessionId.equals(sessionId) &
+                    row.equipmentId.equals(equipmentId),
+              )
+              ..orderBy([(row) => OrderingTerm.desc(row.sortOrder)])
+              ..limit(1))
+            .getSingleOrNull();
+    if (record == null) return const [];
+
+    final query = _database.select(_database.exerciseSets)
+      ..where((row) => row.exerciseRecordId.equals(record.id))
+      ..orderBy([(row) => OrderingTerm.asc(row.setNumber)]);
+    final rows = await query.get();
+    return rows
+        .map((row) => ExerciseSetValue(weightKg: row.weightKg, reps: row.reps))
+        .toList(growable: false);
+  }
+
   Future<void> completeSession(String sessionId) async {
     await _database.transaction(() async {
       final session = await (_database.select(
