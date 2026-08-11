@@ -157,6 +157,37 @@ class WorkoutRepository {
     return row == null ? null : _sessionFromRow(row);
   }
 
+  Future<WorkoutSessionSnapshot?> reopenTodaySession({String? studioId}) async {
+    final rows =
+        await (_database.select(_database.workoutSessions)
+              ..where((row) => row.status.equals('completed'))
+              ..orderBy([(row) => OrderingTerm.desc(row.startedAt)]))
+            .get();
+    final today = _localDate(_now());
+    WorkoutSessionRow? target;
+    for (final row in rows) {
+      if (_localDate(row.startedAt) == today) {
+        target = row;
+        break;
+      }
+      if (_localDate(row.startedAt).isBefore(today)) break;
+    }
+    if (target == null) return null;
+    final targetId = target.id;
+    final updatedAt = _now();
+    await (_database.update(
+      _database.workoutSessions,
+    )..where((row) => row.id.equals(targetId))).write(
+      WorkoutSessionsCompanion(
+        studioId: studioId == null ? const Value.absent() : Value(studioId),
+        status: const Value('draft'),
+        endedAt: const Value(null),
+        updatedAt: Value(updatedAt),
+      ),
+    );
+    return getActiveSession();
+  }
+
   Future<String> addExerciseSets({
     required String sessionId,
     required String equipmentId,
@@ -325,7 +356,9 @@ class WorkoutRepository {
       sessionId: sessionId,
       equipmentId: equipmentId,
     );
-    if (existing != null) return existing;
+    if (existing != null && existing.timerStatus != 'completed') {
+      return existing;
+    }
     return _database.transaction(() async {
       final session = await (_database.select(
         _database.workoutSessions,
@@ -678,6 +711,11 @@ class WorkoutRepository {
       endedAt: row.endedAt,
       note: row.note,
     );
+  }
+
+  static DateTime _localDate(DateTime value) {
+    final local = value.toLocal();
+    return DateTime(local.year, local.month, local.day);
   }
 
   Future<TypedResult> _editableSet(String setId) async {

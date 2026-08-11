@@ -99,7 +99,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           final item = visible[index];
                           return _EquipmentCard(
                             equipment: item,
-                            units: data.studio?.equipmentUnits[item.id],
+                            todayRecord: data.todayRecords[item.id],
                             loading: _openingEquipmentId == item.id,
                             enabled: _openingEquipmentId == null,
                             onTap: () => _openEquipment(item, data.studio),
@@ -150,12 +150,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } catch (_) {
       // 店舗情報を取得できない場合も全器具から記録できるようにする。
     }
+    final currentRecord = active == null
+        ? null
+        : await repository.getSessionSummary(active.id);
     return _HomeData(
       studio: studio,
-      currentRecord: active == null
-          ? null
-          : await repository.getSessionSummary(active.id),
+      currentRecord: currentRecord,
       completedToday: completedToday,
+      todayRecords: _aggregateTodayRecords([?currentRecord, ...completedToday]),
     );
   }
 
@@ -220,11 +222,70 @@ class _HomeData {
     required this.studio,
     required this.currentRecord,
     required this.completedToday,
+    required this.todayRecords,
   });
 
   final StudioItem? studio;
   final WorkoutSessionSummary? currentRecord;
   final List<WorkoutSessionSummary> completedToday;
+  final Map<String, _TodayEquipmentRecord> todayRecords;
+}
+
+class _TodayEquipmentRecord {
+  const _TodayEquipmentRecord({
+    required this.recordType,
+    required this.sets,
+    required this.durationSeconds,
+  });
+
+  final String recordType;
+  final List<ExerciseSetValue> sets;
+  final int durationSeconds;
+
+  String get label {
+    if (recordType == 'cardio') {
+      final minutes = durationSeconds ~/ 60;
+      return minutes > 0 ? '今日 $minutes分' : '今日 $durationSeconds秒';
+    }
+    if (sets.isEmpty) return '今日 記録済み';
+    final first = sets.first;
+    final allSame = sets.every(
+      (set) => set.weightKg == first.weightKg && set.reps == first.reps,
+    );
+    if (allSame) {
+      final weight = first.weightKg == null ? '' : '${first.weightKg}kg × ';
+      return '今日 $weight${first.reps}回 × ${sets.length}セット';
+    }
+    final totalReps = sets.fold(0, (sum, set) => sum + set.reps);
+    return '今日 ${sets.length}セット・合計$totalReps回';
+  }
+}
+
+Map<String, _TodayEquipmentRecord> _aggregateTodayRecords(
+  List<WorkoutSessionSummary> sessions,
+) {
+  final sets = <String, List<ExerciseSetValue>>{};
+  final types = <String, String>{};
+  final durations = <String, int>{};
+  for (final session in sessions) {
+    for (final exercise in session.exercises) {
+      types[exercise.equipmentId] = exercise.recordType;
+      sets.putIfAbsent(exercise.equipmentId, () => []).addAll(exercise.sets);
+      durations.update(
+        exercise.equipmentId,
+        (value) => value + (exercise.durationSeconds ?? 0),
+        ifAbsent: () => exercise.durationSeconds ?? 0,
+      );
+    }
+  }
+  return {
+    for (final id in types.keys)
+      id: _TodayEquipmentRecord(
+        recordType: types[id]!,
+        sets: sets[id] ?? const [],
+        durationSeconds: durations[id] ?? 0,
+      ),
+  };
 }
 
 class _StudioCard extends StatelessWidget {
@@ -241,45 +302,52 @@ class _StudioCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
-        child: Row(
-          children: [
-            const CircleAvatar(child: Icon(Icons.location_on_outlined)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'いつもの店舗',
-                    style: TextStyle(color: ChocoLogColors.muted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    studio?.name ?? '店舗未設定',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onChange,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+          child: Row(
+            children: [
+              const CircleAvatar(child: Icon(Icons.location_on_outlined)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'いつもの店舗',
+                      style: TextStyle(
+                        color: ChocoLogColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      studio?.name ?? '店舗未設定',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            TextButton(
-              onPressed: onChange,
-              child: Text(studio == null ? '設定' : '変更'),
-            ),
-            if (onClear != null)
-              PopupMenuButton<String>(
-                tooltip: '店舗設定の操作',
-                onSelected: (value) {
-                  if (value == 'clear') onClear!();
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: 'clear', child: Text('店舗設定を解除')),
-                ],
-              ),
-          ],
+              Text(studio == null ? '設定' : '変更'),
+              const SizedBox(width: 4),
+              if (onClear == null)
+                const Icon(Icons.chevron_right)
+              else
+                PopupMenuButton<String>(
+                  tooltip: '店舗設定の操作',
+                  onSelected: (value) {
+                    if (value == 'clear') onClear!();
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: 'clear', child: Text('店舗設定を解除')),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -289,14 +357,14 @@ class _StudioCard extends StatelessWidget {
 class _EquipmentCard extends StatelessWidget {
   const _EquipmentCard({
     required this.equipment,
+    required this.todayRecord,
     required this.loading,
     required this.enabled,
     required this.onTap,
-    this.units,
   });
 
   final EquipmentItem equipment;
-  final int? units;
+  final _TodayEquipmentRecord? todayRecord;
   final bool loading;
   final bool enabled;
   final VoidCallback onTap;
@@ -305,6 +373,9 @@ class _EquipmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCardio = equipment.metricType == 'cardio';
     return Card(
+      color: todayRecord == null
+          ? null
+          : ChocoLogColors.yellow.withValues(alpha: 0.28),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -320,9 +391,16 @@ class _EquipmentCard extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 3),
                 )
               else
-                Icon(
-                  isCardio ? Icons.directions_run : Icons.fitness_center,
-                  size: 28,
+                Row(
+                  children: [
+                    Icon(
+                      isCardio ? Icons.directions_run : Icons.fitness_center,
+                      size: 28,
+                    ),
+                    const Spacer(),
+                    if (todayRecord != null)
+                      const Icon(Icons.check_circle, size: 22),
+                  ],
                 ),
               const Spacer(),
               Text(
@@ -333,13 +411,17 @@ class _EquipmentCard extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                [
-                  if (units != null) '$units台',
-                  if (isCardio) '時間' else '回数・セット',
-                ].join('・'),
-                style: const TextStyle(
-                  color: ChocoLogColors.muted,
+                todayRecord?.label ?? (isCardio ? '時間' : '回数・セット'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: todayRecord == null
+                      ? ChocoLogColors.muted
+                      : ChocoLogColors.ink,
                   fontSize: 12,
+                  fontWeight: todayRecord == null
+                      ? FontWeight.normal
+                      : FontWeight.w600,
                 ),
               ),
             ],
@@ -370,11 +452,6 @@ class _CurrentRecordCard extends StatelessWidget {
                 title: Text(exercise.equipmentName),
                 subtitle: Text(_exerciseLabel(exercise)),
               ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () => context.push('/workout/review'),
-              child: const Text('今日の記録を完了'),
-            ),
           ],
         ),
       ),
@@ -408,8 +485,11 @@ class _TodaySessionCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: 6),
           child: Text(
             summary.exercises
-                .map((exercise) => exercise.equipmentName)
-                .join('・'),
+                .map(
+                  (exercise) =>
+                      '${exercise.equipmentName}：${_exerciseLabel(exercise)}',
+                )
+                .join('\n'),
           ),
         ),
         trailing: const Icon(Icons.chevron_right),
@@ -499,7 +579,17 @@ String _exerciseLabel(WorkoutExerciseSummary exercise) {
     final distance = exercise.distanceKm;
     return distance == null ? duration : '$duration・${distance}km';
   }
-  return '${exercise.sets.length}セット';
+  if (exercise.sets.isEmpty) return '記録済み';
+  final first = exercise.sets.first;
+  final allSame = exercise.sets.every(
+    (set) => set.weightKg == first.weightKg && set.reps == first.reps,
+  );
+  if (!allSame) {
+    final totalReps = exercise.sets.fold(0, (sum, set) => sum + set.reps);
+    return '${exercise.sets.length}セット・合計$totalReps回';
+  }
+  final weight = first.weightKg == null ? '' : '${first.weightKg}kg × ';
+  return '$weight${first.reps}回 × ${exercise.sets.length}セット';
 }
 
 String _summaryLabel(WorkoutSessionSummary summary) {

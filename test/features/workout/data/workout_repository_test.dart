@@ -146,6 +146,33 @@ void main() {
     expect(history.first.totalSetCount, 2);
   });
 
+  test('同じ日の完了済み記録を再開して器具を追加できる', () async {
+    final session = await workoutRepository.startSession();
+    await workoutRepository.addExerciseSets(
+      sessionId: session.id,
+      equipmentId: 'chest-press',
+      sets: const [ExerciseSetValue(weightKg: 20, reps: 15)],
+    );
+    await workoutRepository.completeSession(session.id);
+
+    final reopened = await workoutRepository.reopenTodaySession();
+    expect(reopened?.id, session.id);
+    expect(reopened?.status, 'draft');
+    await workoutRepository.addExerciseSets(
+      sessionId: reopened!.id,
+      equipmentId: 'ab-bench',
+      sets: const [ExerciseSetValue(weightKg: null, reps: 15)],
+    );
+    await workoutRepository.completeSession(reopened.id);
+
+    final history = await workoutRepository.getCompletedSessionSummaries();
+    expect(history, hasLength(1));
+    expect(history.single.exercises.map((exercise) => exercise.equipmentName), [
+      'チェストプレス',
+      'アブベンチ',
+    ]);
+  });
+
   test('完了済みメニューを複製し、過去の記録を削除できる', () async {
     final source = await workoutRepository.startSession();
     await workoutRepository.addExerciseSets(
