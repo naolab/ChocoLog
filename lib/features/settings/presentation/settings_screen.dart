@@ -4,6 +4,7 @@ import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/settings/data/reminder_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key, required this.preferences});
@@ -48,6 +49,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Card(
             child: Column(
               children: [
+                ListTile(
+                  title: const Text('よく行く店舗'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/settings/studios'),
+                ),
+                const Divider(height: 1),
                 ListTile(
                   title: const Text('週の目標回数'),
                   subtitle: const Text('ホームと週レポートに反映されます'),

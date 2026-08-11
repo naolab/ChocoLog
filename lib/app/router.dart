@@ -6,6 +6,7 @@ import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart
 import 'package:chocolog/features/reports/presentation/reports_screen.dart';
 import 'package:chocolog/features/settings/data/reminder_service.dart';
 import 'package:chocolog/features/settings/presentation/settings_screen.dart';
+import 'package:chocolog/features/studios/presentation/studio_search_screen.dart';
 import 'package:chocolog/features/workout/presentation/strength_entry_screen.dart';
 import 'package:chocolog/features/workout/presentation/cardio_timer_screen.dart';
 import 'package:chocolog/features/workout/presentation/studio_selection_screen.dart';
@@ -103,6 +104,14 @@ GoRouter createAppRouter(
     GoRoute(
       path: '/workout/studio',
       builder: (context, state) => const StudioSelectionScreen(),
+    ),
+    GoRoute(
+      path: '/workout/studio/search',
+      builder: (context, state) => const StudioSearchScreen(selectable: true),
+    ),
+    GoRoute(
+      path: '/settings/studios',
+      builder: (context, state) => const StudioSearchScreen(),
     ),
     GoRoute(
       path: '/workout/equipment',
