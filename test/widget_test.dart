@@ -1,5 +1,8 @@
 import 'package:chocolog/app/app.dart';
+import 'package:chocolog/core/database/app_database.dart';
+import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,9 +50,14 @@ void main() {
   testWidgets('完了済みならホームから通常4タブへ移動できる', (tester) async {
     SharedPreferences.setMockInitialValues({'onboarding.completed': true});
     final preferences = await OnboardingPreferences.load();
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
 
     await tester.pumpWidget(
-      ProviderScope(child: ChocoLogApp(onboardingPreferences: preferences)),
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(database)],
+        child: ChocoLogApp(onboardingPreferences: preferences),
+      ),
     );
     await tester.pumpAndSettle();
 
