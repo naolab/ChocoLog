@@ -118,18 +118,22 @@ GoRouter createAppRouter(
       path: '/workout/strength/:equipmentId',
       builder: (context, state) => StrengthEntryScreen(
         equipmentId: state.pathParameters['equipmentId']!,
+        returnToHome: state.uri.queryParameters['returnTo'] == 'home',
       ),
     ),
     GoRoute(
       path: '/workout/bodyweight/:equipmentId',
       builder: (context, state) => StrengthEntryScreen(
         equipmentId: state.pathParameters['equipmentId']!,
+        returnToHome: state.uri.queryParameters['returnTo'] == 'home',
       ),
     ),
     GoRoute(
       path: '/workout/cardio/:equipmentId',
-      builder: (context, state) =>
-          CardioTimerScreen(equipmentId: state.pathParameters['equipmentId']!),
+      builder: (context, state) => CardioTimerScreen(
+        equipmentId: state.pathParameters['equipmentId']!,
+        returnToHome: state.uri.queryParameters['returnTo'] == 'home',
+      ),
     ),
     GoRoute(
       path: '/workout/session',

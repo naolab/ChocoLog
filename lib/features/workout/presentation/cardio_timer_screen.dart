@@ -11,9 +11,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class CardioTimerScreen extends ConsumerStatefulWidget {
-  const CardioTimerScreen({super.key, required this.equipmentId});
+  const CardioTimerScreen({
+    super.key,
+    required this.equipmentId,
+    this.returnToHome = false,
+  });
 
   final String equipmentId;
+  final bool returnToHome;
 
   @override
   ConsumerState<CardioTimerScreen> createState() => _CardioTimerScreenState();
@@ -209,7 +214,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
           .finishCardio(recordId: _record!.id, distanceKm: distance),
     );
     if (mounted && _record?.timerStatus == 'completed') {
-      context.go('/workout/session');
+      context.go(widget.returnToHome ? '/home' : '/workout/session');
     }
   }
 

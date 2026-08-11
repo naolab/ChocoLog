@@ -1,5 +1,7 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/features/equipment/data/equipment_repository.dart';
+import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late Future<_HomeData> _data;
+  String? _openingEquipmentId;
 
   @override
   void initState() {
@@ -27,8 +30,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen(workoutFlowControllerProvider, (previous, next) {
       if (previous != next && !next.isLoading) _reload();
     });
+    final equipment = ref.watch(activeEquipmentProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('今日のトレーニング')),
+      appBar: AppBar(title: const Text('ChocoLog')),
       body: SafeArea(
         child: FutureBuilder<_HomeData>(
           future: _data,
@@ -44,20 +48,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                 children: [
-                  if (data.activeSession == null)
-                    _StartWorkoutCard(
-                      onStart: () => context.push('/workout/studio'),
-                    )
-                  else
-                    _ActiveWorkoutCard(
-                      summary: data.activeSession!,
-                      onContinue: () => context.push('/workout/session'),
-                      onAdd: () => context.push('/workout/equipment'),
+                  _StudioCard(
+                    studio: data.studio,
+                    onChange: _changeStudio,
+                    onClear: data.studio == null ? null : _clearStudio,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    '器具を選んで記録',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    data.studio == null
+                        ? 'すべての器具を表示しています'
+                        : '${data.studio!.name}の設置器具',
+                    style: const TextStyle(color: ChocoLogColors.muted),
+                  ),
+                  const SizedBox(height: 12),
+                  equipment.when(
+                    loading: () => const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(child: CircularProgressIndicator()),
                     ),
+                    error: (error, stackTrace) => const _EquipmentError(),
+                    data: (items) {
+                      final visible = data.studio == null
+                          ? items
+                          : items
+                                .where(
+                                  (item) => data.studio!.equipmentUnits
+                                      .containsKey(item.id),
+                                )
+                                .toList(growable: false);
+                      if (visible.isEmpty) {
+                        return _EmptyEquipment(onChangeStudio: _changeStudio);
+                      }
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                              mainAxisExtent: 132,
+                            ),
+                        itemCount: visible.length,
+                        itemBuilder: (context, index) {
+                          final item = visible[index];
+                          return _EquipmentCard(
+                            equipment: item,
+                            units: data.studio?.equipmentUnits[item.id],
+                            loading: _openingEquipmentId == item.id,
+                            enabled: _openingEquipmentId == null,
+                            onTap: () => _openEquipment(item, data.studio),
+                          );
+                        },
+                      );
+                    },
+                  ),
                   const SizedBox(height: 28),
                   Text('今日の記録', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 12),
-                  if (data.completedToday.isEmpty)
+                  if (data.currentRecord != null &&
+                      data.currentRecord!.exercises.isNotEmpty) ...[
+                    _CurrentRecordCard(summary: data.currentRecord!),
+                    const SizedBox(height: 10),
+                  ],
+                  if (data.completedToday.isEmpty &&
+                      (data.currentRecord == null ||
+                          data.currentRecord!.exercises.isEmpty))
                     const _EmptyTodayCard()
                   else
                     for (final summary in data.completedToday) ...[
@@ -83,8 +144,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final startedAt = summary.session.startedAt.toLocal();
       return DateTime(startedAt.year, startedAt.month, startedAt.day) == today;
     }).toList();
+    StudioItem? studio;
+    try {
+      studio = await StudioRepository.instance.preferredStudio();
+    } catch (_) {
+      // 店舗情報を取得できない場合も全器具から記録できるようにする。
+    }
     return _HomeData(
-      activeSession: active == null
+      studio: studio,
+      currentRecord: active == null
           ? null
           : await repository.getSessionSummary(active.id),
       completedToday: completedToday,
@@ -96,6 +164,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (mounted) {
       setState(() {
         _data = future;
+        _openingEquipmentId = null;
       });
     }
     try {
@@ -104,37 +173,112 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // FutureBuilder displays the retry state.
     }
   }
+
+  Future<void> _changeStudio() async {
+    final studio = await context.push<StudioItem>('/workout/studio/search');
+    if (studio == null || !mounted) return;
+    await StudioRepository.instance.setPreferredStudio(studio);
+    if (!mounted) return;
+    await _reload();
+  }
+
+  Future<void> _clearStudio() async {
+    await StudioRepository.instance.setPreferredStudio(null);
+    if (!mounted) return;
+    await _reload();
+  }
+
+  Future<void> _openEquipment(
+    EquipmentItem equipment,
+    StudioItem? studio,
+  ) async {
+    setState(() => _openingEquipmentId = equipment.id);
+    try {
+      await ref
+          .read(workoutFlowControllerProvider.notifier)
+          .ensureSession(studioId: studio?.id);
+      if (!mounted) return;
+      final type = switch (equipment.metricType) {
+        'cardio' => 'cardio',
+        'bodyweight' => 'bodyweight',
+        _ => 'strength',
+      };
+      await context.push('/workout/$type/${equipment.id}?returnTo=home');
+      if (mounted) await _reload();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _openingEquipmentId = null);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('記録画面を開けませんでした')));
+    }
+  }
 }
 
 class _HomeData {
-  const _HomeData({required this.activeSession, required this.completedToday});
+  const _HomeData({
+    required this.studio,
+    required this.currentRecord,
+    required this.completedToday,
+  });
 
-  final WorkoutSessionSummary? activeSession;
+  final StudioItem? studio;
+  final WorkoutSessionSummary? currentRecord;
   final List<WorkoutSessionSummary> completedToday;
 }
 
-class _StartWorkoutCard extends StatelessWidget {
-  const _StartWorkoutCard({required this.onStart});
+class _StudioCard extends StatelessWidget {
+  const _StudioCard({
+    required this.studio,
+    required this.onChange,
+    required this.onClear,
+  });
 
-  final VoidCallback onStart;
+  final StudioItem? studio;
+  final VoidCallback onChange;
+  final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+        child: Row(
           children: [
-            const Icon(Icons.fitness_center, size: 44),
-            const SizedBox(height: 14),
-            Text(
-              '今日も記録を始めましょう',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
+            const CircleAvatar(child: Icon(Icons.location_on_outlined)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'いつもの店舗',
+                    style: TextStyle(color: ChocoLogColors.muted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    studio?.name ?? '店舗未設定',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 18),
-            FilledButton(onPressed: onStart, child: const Text('トレーニングを始める')),
+            TextButton(
+              onPressed: onChange,
+              child: Text(studio == null ? '設定' : '変更'),
+            ),
+            if (onClear != null)
+              PopupMenuButton<String>(
+                tooltip: '店舗設定の操作',
+                onSelected: (value) {
+                  if (value == 'clear') onClear!();
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'clear', child: Text('店舗設定を解除')),
+                ],
+              ),
           ],
         ),
       ),
@@ -142,57 +286,94 @@ class _StartWorkoutCard extends StatelessWidget {
   }
 }
 
-class _ActiveWorkoutCard extends StatelessWidget {
-  const _ActiveWorkoutCard({
-    required this.summary,
-    required this.onContinue,
-    required this.onAdd,
+class _EquipmentCard extends StatelessWidget {
+  const _EquipmentCard({
+    required this.equipment,
+    required this.loading,
+    required this.enabled,
+    required this.onTap,
+    this.units,
   });
 
+  final EquipmentItem equipment;
+  final int? units;
+  final bool loading;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCardio = equipment.metricType == 'cardio';
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (loading)
+                const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                )
+              else
+                Icon(
+                  isCardio ? Icons.directions_run : Icons.fitness_center,
+                  size: 28,
+                ),
+              const Spacer(),
+              Text(
+                equipment.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                [
+                  if (units != null) '$units台',
+                  if (isCardio) '時間' else '回数・セット',
+                ].join('・'),
+                style: const TextStyle(
+                  color: ChocoLogColors.muted,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CurrentRecordCard extends StatelessWidget {
+  const _CurrentRecordCard({required this.summary});
+
   final WorkoutSessionSummary summary;
-  final VoidCallback onContinue;
-  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.play_circle_fill),
-                const SizedBox(width: 8),
-                Text(
-                  '進行中のトレーニング',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            if (summary.exercises.isEmpty)
-              const Text(
-                'まだ器具は記録されていません',
-                style: TextStyle(color: ChocoLogColors.muted),
-              )
-            else ...[
-              Text(_summaryLabel(summary)),
-              const SizedBox(height: 8),
-              for (final exercise in summary.exercises)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('・${exercise.equipmentName}'),
-                ),
-            ],
-            const SizedBox(height: 18),
-            FilledButton(onPressed: onContinue, child: const Text('記録を続ける')),
+            for (final exercise in summary.exercises)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(exercise.equipmentName),
+                subtitle: Text(_exerciseLabel(exercise)),
+              ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: const Text('器具を追加'),
+            OutlinedButton(
+              onPressed: () => context.push('/workout/review'),
+              child: const Text('今日の記録を完了'),
             ),
           ],
         ),
@@ -226,14 +407,48 @@ class _TodaySessionCard extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Text(
-            summary.exercises.isEmpty
-                ? '種目の記録なし'
-                : summary.exercises
-                      .map((exercise) => exercise.equipmentName)
-                      .join('・'),
+            summary.exercises
+                .map((exercise) => exercise.equipmentName)
+                .join('・'),
           ),
         ),
         trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+}
+
+class _EmptyEquipment extends StatelessWidget {
+  const _EmptyEquipment({required this.onChangeStudio});
+
+  final VoidCallback onChangeStudio;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const Text('この店舗の器具情報が見つかりませんでした'),
+            const SizedBox(height: 10),
+            TextButton(onPressed: onChangeStudio, child: const Text('店舗を変更')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EquipmentError extends StatelessWidget {
+  const _EquipmentError();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Card(
+      child: Padding(
+        padding: EdgeInsets.all(20),
+        child: Text('器具一覧を読み込めませんでした'),
       ),
     );
   }
@@ -248,7 +463,7 @@ class _EmptyTodayCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(20),
         child: Text(
-          '完了したトレーニングはまだありません',
+          '器具を選ぶと、ここに今日の記録が追加されます',
           style: TextStyle(color: ChocoLogColors.muted),
         ),
       ),
@@ -274,6 +489,17 @@ class _HomeError extends StatelessWidget {
       ),
     );
   }
+}
+
+String _exerciseLabel(WorkoutExerciseSummary exercise) {
+  if (exercise.recordType == 'cardio') {
+    final seconds = exercise.durationSeconds ?? 0;
+    final minutes = seconds ~/ 60;
+    final duration = minutes > 0 ? '$minutes分' : '$seconds秒';
+    final distance = exercise.distanceKm;
+    return distance == null ? duration : '$duration・${distance}km';
+  }
+  return '${exercise.sets.length}セット';
 }
 
 String _summaryLabel(WorkoutSessionSummary summary) {
