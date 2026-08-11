@@ -115,4 +115,34 @@ void main() {
     expect(set.weightKg, isNull);
     expect(set.reps, 15);
   });
+
+  test('完了済みセッションを新しい順で取得できる', () async {
+    final firstSession = await workoutRepository.startSession();
+    await workoutRepository.addExerciseSets(
+      sessionId: firstSession.id,
+      equipmentId: 'chest-press',
+      sets: const [ExerciseSetValue(weightKg: 20, reps: 15)],
+    );
+    await workoutRepository.completeSession(firstSession.id);
+
+    final secondSession = await workoutRepository.startSession();
+    await workoutRepository.addExerciseSets(
+      sessionId: secondSession.id,
+      equipmentId: 'ab-bench',
+      sets: const [
+        ExerciseSetValue(weightKg: null, reps: 15),
+        ExerciseSetValue(weightKg: null, reps: 15),
+      ],
+    );
+    await workoutRepository.completeSession(secondSession.id);
+
+    final history = await workoutRepository.getCompletedSessionSummaries();
+
+    expect(history.map((summary) => summary.session.id), [
+      secondSession.id,
+      firstSession.id,
+    ]);
+    expect(history.first.exercises.single.equipmentName, 'アブベンチ');
+    expect(history.first.totalSetCount, 2);
+  });
 }

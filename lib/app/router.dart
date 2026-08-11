@@ -1,5 +1,6 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/features/equipment/presentation/equipment_selection_screen.dart';
+import 'package:chocolog/features/history/presentation/history_screens.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:chocolog/features/workout/presentation/strength_entry_screen.dart';
@@ -46,11 +47,15 @@ GoRouter createAppRouter(
           routes: [
             GoRoute(
               path: '/history',
-              builder: (context, state) => const _EmptyTab(
-                title: '履歴',
-                message: 'トレーニングの記録がここに表示されます',
-                icon: Icons.calendar_month_outlined,
-              ),
+              builder: (context, state) => const HistoryScreen(),
+              routes: [
+                GoRoute(
+                  path: ':sessionId',
+                  builder: (context, state) => HistoryDetailScreen(
+                    sessionId: state.pathParameters['sessionId']!,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

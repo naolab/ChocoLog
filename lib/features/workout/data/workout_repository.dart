@@ -296,6 +296,17 @@ class WorkoutRepository {
     );
   }
 
+  Future<List<WorkoutSessionSummary>> getCompletedSessionSummaries() async {
+    final sessions =
+        await (_database.select(_database.workoutSessions)
+              ..where((row) => row.status.equals('completed'))
+              ..orderBy([(row) => OrderingTerm.desc(row.startedAt)]))
+            .get();
+    return Future.wait([
+      for (final session in sessions) getSessionSummary(session.id),
+    ]);
+  }
+
   Future<void> completeSession(String sessionId) async {
     await _database.transaction(() async {
       final session = await (_database.select(

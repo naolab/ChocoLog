@@ -111,6 +111,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('トレーニングを始める'), findsOneWidget);
 
+    await tester.tap(find.text('履歴'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    expect(find.text('チェストプレス・アブベンチ'), findsOneWidget);
+    expect(find.textContaining('2種目・8セット'), findsOneWidget);
+    await tester.tap(find.textContaining('2種目・8セット'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('トレーニング詳細'), findsOneWidget);
+    expect(find.text('チェストプレス'), findsOneWidget);
+    expect(find.text('アブベンチ'), findsOneWidget);
+    expect(find.textContaining('重量未設定 × 15回'), findsOneWidget);
+    expect(find.textContaining('自重 × 15回'), findsNWidgets(3));
+
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
   });
