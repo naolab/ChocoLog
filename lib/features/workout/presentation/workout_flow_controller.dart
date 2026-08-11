@@ -34,12 +34,11 @@ class WorkoutFlowController
   Future<List<ExerciseSetValue>> addSets({
     required String equipmentId,
     required List<ExerciseSetValue> sets,
+    String? studioId,
   }) async {
     state = const AsyncLoading();
     try {
-      final session =
-          await _repository.getActiveSession() ??
-          await _repository.startSession();
+      final session = await _editableTodaySession(studioId: studioId);
       await _repository.addExerciseSets(
         sessionId: session.id,
         equipmentId: equipmentId,
@@ -49,7 +48,8 @@ class WorkoutFlowController
         sessionId: session.id,
         equipmentId: equipmentId,
       );
-      state = AsyncData(session);
+      await _repository.completeSession(session.id);
+      state = const AsyncData(null);
       return savedSets;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -58,9 +58,8 @@ class WorkoutFlowController
   }
 
   Future<List<ExerciseSetValue>> currentSets(String equipmentId) async {
-    final session =
-        await _repository.getActiveSession() ??
-        await _repository.startSession();
+    final session = await _repository.getTodaySession();
+    if (session == null) return const [];
     return _repository.getSessionSets(
       sessionId: session.id,
       equipmentId: equipmentId,
@@ -73,42 +72,55 @@ class WorkoutFlowController
     required int? weightKg,
     required int reps,
   }) async {
-    final session = await _requireActiveSession();
+    final session = await _editableTodaySession();
     await _repository.updateExerciseSet(
       setId: setId,
       weightKg: weightKg,
       reps: reps,
     );
-    state = AsyncData(session);
-    return _repository.getSessionSets(
+    final saved = await _repository.getSessionSets(
       sessionId: session.id,
       equipmentId: equipmentId,
     );
+    await _repository.completeSession(session.id);
+    state = const AsyncData(null);
+    return saved;
   }
 
   Future<List<ExerciseSetValue>> deleteSet({
     required String equipmentId,
     required String setId,
   }) async {
-    final session = await _requireActiveSession();
+    final session = await _editableTodaySession();
     await _repository.deleteExerciseSet(setId);
-    state = AsyncData(session);
-    return _repository.getSessionSets(
+    final saved = await _repository.getSessionSets(
       sessionId: session.id,
       equipmentId: equipmentId,
     );
+    final summary = await _repository.getSessionSummary(session.id);
+    if (summary.exercises.isEmpty) {
+      await _repository.deleteEmptyDraftSession(session.id);
+    } else {
+      await _repository.completeSession(session.id);
+    }
+    state = const AsyncData(null);
+    return saved;
   }
 
   Future<CardioRecordSnapshot?> currentCardio(String equipmentId) async {
-    final session = await _requireActiveSession();
+    final session = await _repository.getTodaySession();
+    if (session == null) return null;
     return _repository.getCardioRecord(
       sessionId: session.id,
       equipmentId: equipmentId,
     );
   }
 
-  Future<CardioRecordSnapshot> startCardio(String equipmentId) async {
-    final session = await _requireActiveSession();
+  Future<CardioRecordSnapshot> startCardio(
+    String equipmentId, {
+    String? studioId,
+  }) async {
+    final session = await _editableTodaySession(studioId: studioId);
     final record = await _repository.startCardio(
       sessionId: session.id,
       equipmentId: equipmentId,
@@ -131,8 +143,27 @@ class WorkoutFlowController
       recordId: recordId,
       distanceKm: distanceKm,
     );
-    state = AsyncData(await _requireActiveSession());
+    await _repository.completeSession(record.sessionId);
+    state = const AsyncData(null);
     return record;
+  }
+
+  Future<void> finalizeSavedSession() async {
+    final session = await _repository.getActiveSession();
+    if (session == null) return;
+    final summary = await _repository.getSessionSummary(session.id);
+    if (summary.exercises.isEmpty) {
+      await _repository.deleteEmptyDraftSession(session.id);
+      state = const AsyncData(null);
+      return;
+    }
+    try {
+      await _repository.completeSession(session.id);
+    } on StateError {
+      // 計測中の有酸素記録は、終了操作まで進行中のまま維持する。
+      return;
+    }
+    state = const AsyncData(null);
   }
 
   Future<WorkoutSessionSummary> summary() async {
@@ -151,14 +182,14 @@ class WorkoutFlowController
     return session.id;
   }
 
-  Future<WorkoutSessionSnapshot> duplicate(String sourceSessionId) async {
+  Future<void> duplicate(String sourceSessionId) async {
     state = const AsyncLoading();
     try {
       final session = await _repository.duplicateCompletedSession(
         sourceSessionId,
       );
-      state = AsyncData(session);
-      return session;
+      await _repository.completeSession(session.id);
+      state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;
@@ -171,5 +202,14 @@ class WorkoutFlowController
       throw StateError('進行中のトレーニングがありません');
     }
     return session;
+  }
+
+  Future<WorkoutSessionSnapshot> _editableTodaySession({
+    String? studioId,
+  }) async {
+    final today = await _repository.getTodaySession();
+    if (today?.status == 'draft') return today!;
+    return await _repository.reopenTodaySession(studioId: studioId) ??
+        await _repository.startSession(studioId: studioId);
   }
 }

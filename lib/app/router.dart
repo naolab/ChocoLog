@@ -119,6 +119,7 @@ GoRouter createAppRouter(
       builder: (context, state) => StrengthEntryScreen(
         equipmentId: state.pathParameters['equipmentId']!,
         returnToHome: state.uri.queryParameters['returnTo'] == 'home',
+        studioId: state.uri.queryParameters['studioId'],
       ),
     ),
     GoRoute(
@@ -126,6 +127,7 @@ GoRouter createAppRouter(
       builder: (context, state) => StrengthEntryScreen(
         equipmentId: state.pathParameters['equipmentId']!,
         returnToHome: state.uri.queryParameters['returnTo'] == 'home',
+        studioId: state.uri.queryParameters['studioId'],
       ),
     ),
     GoRoute(
@@ -133,6 +135,7 @@ GoRouter createAppRouter(
       builder: (context, state) => CardioTimerScreen(
         equipmentId: state.pathParameters['equipmentId']!,
         returnToHome: state.uri.queryParameters['returnTo'] == 'home',
+        studioId: state.uri.queryParameters['studioId'],
       ),
     ),
     GoRoute(

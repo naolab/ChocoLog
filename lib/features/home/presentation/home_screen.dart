@@ -102,7 +102,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             todayRecord: data.todayRecords[item.id],
                             loading: _openingEquipmentId == item.id,
                             enabled: _openingEquipmentId == null,
-                            onTap: () => _openEquipment(item, data.studio),
+                            onTap: () => _openEquipment(item, data.studio?.id),
                           );
                         },
                       );
@@ -136,6 +136,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<_HomeData> _loadData() async {
     final repository = ref.read(workoutRepositoryProvider);
+    await ref
+        .read(workoutFlowControllerProvider.notifier)
+        .finalizeSavedSession();
     final active = await repository.getActiveSession();
     final history = await repository.getCompletedSessionSummaries();
     final now = DateTime.now();
@@ -190,22 +193,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await _reload();
   }
 
-  Future<void> _openEquipment(
-    EquipmentItem equipment,
-    StudioItem? studio,
-  ) async {
+  Future<void> _openEquipment(EquipmentItem equipment, String? studioId) async {
     setState(() => _openingEquipmentId = equipment.id);
     try {
-      await ref
-          .read(workoutFlowControllerProvider.notifier)
-          .ensureSession(studioId: studio?.id);
-      if (!mounted) return;
       final type = switch (equipment.metricType) {
         'cardio' => 'cardio',
         'bodyweight' => 'bodyweight',
         _ => 'strength',
       };
-      await context.push('/workout/$type/${equipment.id}?returnTo=home');
+      final queryParameters = {'returnTo': 'home'};
+      if (studioId != null) queryParameters['studioId'] = studioId;
+      final location = Uri(
+        path: '/workout/$type/${equipment.id}',
+        queryParameters: queryParameters,
+      ).toString();
+      await context.push(location);
       if (mounted) await _reload();
     } catch (_) {
       if (!mounted) return;

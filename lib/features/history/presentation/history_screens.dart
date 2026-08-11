@@ -250,7 +250,7 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('進行中のトレーニングを先に完了してください')));
+      ).showSnackBar(const SnackBar(content: Text('計測中の有酸素運動を先に終了してください')));
       return;
     }
     if (!mounted) return;
@@ -259,7 +259,7 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
       await ref
           .read(workoutFlowControllerProvider.notifier)
           .duplicate(widget.sessionId);
-      if (mounted) context.go('/workout/session');
+      if (mounted) context.go('/home');
     } catch (_) {
       if (!mounted) return;
       setState(() => _processing = false);

@@ -15,10 +15,12 @@ class CardioTimerScreen extends ConsumerStatefulWidget {
     super.key,
     required this.equipmentId,
     this.returnToHome = false,
+    this.studioId,
   });
 
   final String equipmentId;
   final bool returnToHome;
+  final String? studioId;
 
   @override
   ConsumerState<CardioTimerScreen> createState() => _CardioTimerScreenState();
@@ -48,15 +50,8 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final record = _record;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_equipment?.name ?? '有酸素運動'),
-        actions: [
-          if (record?.timerStatus == 'completed')
-            TextButton(onPressed: _finishNavigation, child: const Text('完了')),
-        ],
-      ),
+      appBar: AppBar(title: Text(_equipment?.name ?? '有酸素運動')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -69,7 +64,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
                   const Spacer(),
                   Text(
                     _formatDuration(
-                      record?.elapsedSecondsAt(DateTime.now().toUtc()) ?? 0,
+                      _record?.elapsedSecondsAt(DateTime.now().toUtc()) ?? 0,
                     ),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.displayLarge?.copyWith(
@@ -79,14 +74,14 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    _statusLabel(record?.timerStatus),
+                    _statusLabel(_record?.timerStatus),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const Spacer(),
                   TextField(
                     controller: _distanceController,
-                    enabled: record?.timerStatus != 'completed',
+                    enabled: _record?.timerStatus != 'completed',
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -100,13 +95,13 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  if (record == null)
+                  if (_record == null)
                     FilledButton.icon(
                       onPressed: _processing ? null : _start,
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('タイマーを開始'),
                     )
-                  else if (record.timerStatus == 'running') ...[
+                  else if (_record!.timerStatus == 'running') ...[
                     OutlinedButton.icon(
                       onPressed: _processing ? null : _pause,
                       icon: const Icon(Icons.pause),
@@ -117,7 +112,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
                       onPressed: _processing ? null : _finish,
                       child: const Text('この器具を終了'),
                     ),
-                  ] else if (record.timerStatus == 'paused') ...[
+                  ] else if (_record!.timerStatus == 'paused') ...[
                     OutlinedButton.icon(
                       onPressed: _processing ? null : _resume,
                       icon: const Icon(Icons.play_arrow),
@@ -131,7 +126,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
                   ] else
                     FilledButton(
                       onPressed: _finishNavigation,
-                      child: Text(widget.returnToHome ? 'ホームへ戻る' : '今日の記録へ戻る'),
+                      child: const Text('ホームへ戻る'),
                     ),
                 ],
               ),
@@ -185,7 +180,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
   Future<void> _start() => _update(
     () => ref
         .read(workoutFlowControllerProvider.notifier)
-        .startCardio(widget.equipmentId),
+        .startCardio(widget.equipmentId, studioId: widget.studioId),
   );
 
   Future<void> _pause() => _update(
@@ -220,17 +215,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
   }
 
   Future<void> _finishNavigation() async {
-    if (widget.returnToHome) {
-      try {
-        await ref.read(workoutFlowControllerProvider.notifier).complete();
-      } catch (_) {
-        if (mounted) _showError('記録を保存できませんでした');
-        return;
-      }
-    }
-    if (mounted) {
-      context.go(widget.returnToHome ? '/home' : '/workout/session');
-    }
+    if (mounted) context.go('/home');
   }
 
   Future<void> _update(

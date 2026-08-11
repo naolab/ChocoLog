@@ -188,6 +188,23 @@ class WorkoutRepository {
     return getActiveSession();
   }
 
+  Future<WorkoutSessionSnapshot?> getTodaySession() async {
+    final today = _localDate(_now());
+    final active = await getActiveSession();
+    if (active != null && _localDate(active.startedAt) == today) return active;
+    final rows =
+        await (_database.select(_database.workoutSessions)
+              ..where((row) => row.status.equals('completed'))
+              ..orderBy([(row) => OrderingTerm.desc(row.startedAt)]))
+            .get();
+    for (final row in rows) {
+      final date = _localDate(row.startedAt);
+      if (date == today) return _sessionFromRow(row);
+      if (date.isBefore(today)) break;
+    }
+    return null;
+  }
+
   Future<String> addExerciseSets({
     required String sessionId,
     required String equipmentId,
@@ -586,6 +603,24 @@ class WorkoutRepository {
       await _database.delete(_database.exerciseSets).go();
       await _database.delete(_database.exerciseRecords).go();
       await _database.delete(_database.workoutSessions).go();
+    });
+  }
+
+  Future<void> deleteEmptyDraftSession(String sessionId) async {
+    await _database.transaction(() async {
+      final session = await (_database.select(
+        _database.workoutSessions,
+      )..where((row) => row.id.equals(sessionId))).getSingleOrNull();
+      if (session == null || session.status != 'draft') return;
+      final record =
+          await (_database.select(_database.exerciseRecords)
+                ..where((row) => row.workoutSessionId.equals(sessionId))
+                ..limit(1))
+              .getSingleOrNull();
+      if (record != null) return;
+      await (_database.delete(
+        _database.workoutSessions,
+      )..where((row) => row.id.equals(sessionId))).go();
     });
   }
 
