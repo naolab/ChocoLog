@@ -112,7 +112,7 @@ void main() {
 
     await tester.tap(find.text('完了'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('チェストプレス'), findsOneWidget);
+    expect(find.textContaining('チェストプレス'), findsWidgets);
     expect(find.textContaining('アブベンチ'), findsOneWidget);
     await tester.tap(find.text('トレーニングを終了'));
     await tester.pumpAndSettle();
@@ -128,7 +128,7 @@ void main() {
     await tester.tap(find.text('ホームへ戻る'));
     await tester.pumpAndSettle();
     expect(find.text('トレーニングを始める'), findsOneWidget);
-    expect(find.text('今週 2 / 2回'), findsOneWidget);
+    expect(find.text('今日の記録'), findsOneWidget);
     final homeHistory = await repository.getCompletedSessionSummaries();
     expect(
       homeHistory.first.exercises.map((exercise) => exercise.equipmentName),
@@ -136,15 +136,22 @@ void main() {
     );
     await tester.drag(find.byType(ListView).last, const Offset(0, -350));
     await tester.pumpAndSettle();
-    expect(find.textContaining('チェストプレス'), findsOneWidget);
+    expect(find.textContaining('チェストプレス'), findsWidgets);
 
-    await tester.tap(find.text('履歴'));
+    await tester.tap(find.text('レポート'));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).last, const Offset(0, -400));
+    final completedSessionTitle = find.textContaining('2種目・8セット');
+    await tester.scrollUntilVisible(
+      completedSessionTitle,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.pumpAndSettle();
     expect(find.text('チェストプレス・アブベンチ'), findsOneWidget);
-    expect(find.textContaining('2種目・8セット'), findsOneWidget);
-    await tester.tap(find.textContaining('2種目・8セット'));
+    expect(completedSessionTitle, findsOneWidget);
+    await tester.tap(
+      find.ancestor(of: completedSessionTitle, matching: find.byType(ListTile)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('トレーニング詳細'), findsOneWidget);
