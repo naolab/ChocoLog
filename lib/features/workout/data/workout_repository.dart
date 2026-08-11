@@ -29,6 +29,30 @@ class WorkoutSessionSnapshot {
   final DateTime? endedAt;
 }
 
+class WorkoutExerciseSummary {
+  const WorkoutExerciseSummary({
+    required this.equipmentId,
+    required this.equipmentName,
+    required this.recordType,
+    required this.sets,
+  });
+
+  final String equipmentId;
+  final String equipmentName;
+  final String recordType;
+  final List<ExerciseSetValue> sets;
+}
+
+class WorkoutSessionSummary {
+  const WorkoutSessionSummary({required this.session, required this.exercises});
+
+  final WorkoutSessionSnapshot session;
+  final List<WorkoutExerciseSummary> exercises;
+
+  int get totalSetCount =>
+      exercises.fold(0, (total, exercise) => total + exercise.sets.length);
+}
+
 class WorkoutRepository {
   WorkoutRepository(this._database, {IdGenerator? idGenerator, Now? now})
     : _idGenerator = idGenerator ?? _defaultId,
@@ -220,6 +244,56 @@ class WorkoutRepository {
     return rows
         .map((row) => ExerciseSetValue(weightKg: row.weightKg, reps: row.reps))
         .toList(growable: false);
+  }
+
+  Future<WorkoutSessionSummary> getSessionSummary(String sessionId) async {
+    final session = await (_database.select(
+      _database.workoutSessions,
+    )..where((row) => row.id.equals(sessionId))).getSingleOrNull();
+    if (session == null) throw StateError('セッションが見つかりません');
+
+    final records =
+        await (_database.select(_database.exerciseRecords).join([
+                innerJoin(
+                  _database.equipment,
+                  _database.equipment.id.equalsExp(
+                    _database.exerciseRecords.equipmentId,
+                  ),
+                ),
+              ])
+              ..where(
+                _database.exerciseRecords.workoutSessionId.equals(sessionId),
+              )
+              ..orderBy([
+                OrderingTerm.asc(_database.exerciseRecords.sortOrder),
+              ]))
+            .get();
+    final exercises = <WorkoutExerciseSummary>[];
+    for (final result in records) {
+      final record = result.readTable(_database.exerciseRecords);
+      final equipment = result.readTable(_database.equipment);
+      final setsQuery = _database.select(_database.exerciseSets)
+        ..where((row) => row.exerciseRecordId.equals(record.id))
+        ..orderBy([(row) => OrderingTerm.asc(row.setNumber)]);
+      final setRows = await setsQuery.get();
+      exercises.add(
+        WorkoutExerciseSummary(
+          equipmentId: equipment.id,
+          equipmentName: equipment.name,
+          recordType: record.recordType,
+          sets: setRows
+              .map(
+                (row) =>
+                    ExerciseSetValue(weightKg: row.weightKg, reps: row.reps),
+              )
+              .toList(growable: false),
+        ),
+      );
+    }
+    return WorkoutSessionSummary(
+      session: _sessionFromRow(session),
+      exercises: exercises,
+    );
   }
 
   Future<void> completeSession(String sessionId) async {

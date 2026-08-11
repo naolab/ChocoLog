@@ -73,6 +73,10 @@ void main() {
 
     await tester.tap(find.text('完了'));
     await tester.pumpAndSettle();
+    expect(find.text('今日の記録'), findsOneWidget);
+    expect(find.text('チェストプレス'), findsOneWidget);
+    await tester.tap(find.text('別の器具を追加'));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('アブベンチ'),
       200,
@@ -88,6 +92,24 @@ void main() {
 
     expect(find.text('自重 × 15回'), findsNWidgets(3));
     expect(await database.select(database.exerciseSets).get(), hasLength(11));
+
+    await tester.tap(find.text('完了'));
+    await tester.pumpAndSettle();
+    expect(find.text('チェストプレス'), findsOneWidget);
+    expect(find.text('アブベンチ'), findsOneWidget);
+    await tester.tap(find.text('トレーニングを終了'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2種目・8セット'), findsOneWidget);
+    await tester.tap(find.text('保存して完了'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('トレーニング完了！'), findsOneWidget);
+    expect(find.text('2種目・8セット'), findsOneWidget);
+    expect(await repository.getActiveSession(), isNull);
+    await tester.tap(find.text('ホームへ戻る'));
+    await tester.pumpAndSettle();
+    expect(find.text('トレーニングを始める'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

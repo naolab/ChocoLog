@@ -4,6 +4,7 @@ import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:chocolog/features/workout/presentation/strength_entry_screen.dart';
 import 'package:chocolog/features/workout/presentation/studio_selection_screen.dart';
+import 'package:chocolog/features/workout/presentation/workout_session_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -98,6 +99,19 @@ GoRouter createAppRouter(
       builder: (context, state) => StrengthEntryScreen(
         equipmentId: state.pathParameters['equipmentId']!,
       ),
+    ),
+    GoRoute(
+      path: '/workout/session',
+      builder: (context, state) => const WorkoutSessionScreen(),
+    ),
+    GoRoute(
+      path: '/workout/review',
+      builder: (context, state) => const WorkoutReviewScreen(),
+    ),
+    GoRoute(
+      path: '/workout/complete/:sessionId',
+      builder: (context, state) =>
+          WorkoutCompleteScreen(sessionId: state.pathParameters['sessionId']!),
     ),
   ],
 );
