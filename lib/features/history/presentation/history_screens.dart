@@ -176,7 +176,7 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                '${summary.exercises.length}種目・${summary.totalSetCount}セット',
+                _sessionTotalLabel(summary),
                 style: const TextStyle(color: ChocoLogColors.muted),
               ),
               if (summary.session.note != null) ...[
@@ -201,13 +201,16 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 12),
-                        for (final (index, set) in exercise.sets.indexed)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(
-                              '${index + 1}セット目　${_setLabel(exercise, set)}',
+                        if (exercise.recordType == 'cardio')
+                          Text(_cardioLabel(exercise))
+                        else
+                          for (final (index, set) in exercise.sets.indexed)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                '${index + 1}セット目　${_setLabel(exercise, set)}',
+                              ),
                             ),
-                          ),
                       ],
                     ),
                   ),
@@ -434,7 +437,7 @@ class _SessionCard extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         title: Text(
           '${_twoDigits(startedAt.hour)}:${_twoDigits(startedAt.minute)}　'
-          '${summary.exercises.length}種目・${summary.totalSetCount}セット',
+          '${_sessionTotalLabel(summary)}',
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -515,3 +518,27 @@ String _setLabel(WorkoutExerciseSummary exercise, ExerciseSetValue set) {
 }
 
 String _twoDigits(int value) => value.toString().padLeft(2, '0');
+
+String _sessionTotalLabel(WorkoutSessionSummary summary) {
+  final parts = ['${summary.exercises.length}種目'];
+  if (summary.totalSetCount > 0) parts.add('${summary.totalSetCount}セット');
+  if (summary.totalCardioSeconds > 0) {
+    parts.add(_durationLabel(summary.totalCardioSeconds));
+  }
+  return parts.join('・');
+}
+
+String _cardioLabel(WorkoutExerciseSummary exercise) {
+  final duration = _durationLabel(exercise.durationSeconds ?? 0);
+  return exercise.distanceKm == null
+      ? duration
+      : '$duration・${exercise.distanceKm}km';
+}
+
+String _durationLabel(int seconds) {
+  final minutes = seconds ~/ 60;
+  final remainder = seconds % 60;
+  if (minutes == 0) return '$remainder秒';
+  if (remainder == 0) return '$minutes分';
+  return '$minutes分$remainder秒';
+}

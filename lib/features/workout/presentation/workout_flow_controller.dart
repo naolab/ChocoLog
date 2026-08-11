@@ -98,6 +98,42 @@ class WorkoutFlowController
     );
   }
 
+  Future<CardioRecordSnapshot?> currentCardio(String equipmentId) async {
+    final session = await _requireActiveSession();
+    return _repository.getCardioRecord(
+      sessionId: session.id,
+      equipmentId: equipmentId,
+    );
+  }
+
+  Future<CardioRecordSnapshot> startCardio(String equipmentId) async {
+    final session = await _requireActiveSession();
+    final record = await _repository.startCardio(
+      sessionId: session.id,
+      equipmentId: equipmentId,
+    );
+    state = AsyncData(session);
+    return record;
+  }
+
+  Future<CardioRecordSnapshot> pauseCardio(String recordId) =>
+      _repository.pauseCardio(recordId);
+
+  Future<CardioRecordSnapshot> resumeCardio(String recordId) =>
+      _repository.resumeCardio(recordId);
+
+  Future<CardioRecordSnapshot> finishCardio({
+    required String recordId,
+    double? distanceKm,
+  }) async {
+    final record = await _repository.finishCardio(
+      recordId: recordId,
+      distanceKm: distanceKm,
+    );
+    state = AsyncData(await _requireActiveSession());
+    return record;
+  }
+
   Future<WorkoutSessionSummary> summary() async {
     final session = await _repository.getActiveSession();
     if (session == null) {
