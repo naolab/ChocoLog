@@ -7,10 +7,17 @@ typedef IdGenerator = String Function();
 typedef Now = DateTime Function();
 
 class ExerciseSetValue {
-  const ExerciseSetValue({required this.weightKg, required this.reps});
+  const ExerciseSetValue({
+    required this.weightKg,
+    required this.reps,
+    this.id,
+    this.setNumber,
+  });
 
   final int? weightKg;
   final int reps;
+  final String? id;
+  final int? setNumber;
 }
 
 class WorkoutSessionSnapshot {
@@ -20,6 +27,7 @@ class WorkoutSessionSnapshot {
     required this.status,
     required this.startedAt,
     required this.endedAt,
+    required this.note,
   });
 
   final String id;
@@ -27,6 +35,7 @@ class WorkoutSessionSnapshot {
   final String status;
   final DateTime startedAt;
   final DateTime? endedAt;
+  final String? note;
 }
 
 class WorkoutExerciseSummary {
@@ -216,9 +225,7 @@ class WorkoutRepository {
       ..where((row) => row.exerciseRecordId.equals(record.id))
       ..orderBy([(row) => OrderingTerm.asc(row.setNumber)]);
     final rows = await setsQuery.get();
-    return rows
-        .map((row) => ExerciseSetValue(weightKg: row.weightKg, reps: row.reps))
-        .toList(growable: false);
+    return rows.map(_setFromRow).toList(growable: false);
   }
 
   Future<List<ExerciseSetValue>> getSessionSets({
@@ -241,9 +248,7 @@ class WorkoutRepository {
       ..where((row) => row.exerciseRecordId.equals(record.id))
       ..orderBy([(row) => OrderingTerm.asc(row.setNumber)]);
     final rows = await query.get();
-    return rows
-        .map((row) => ExerciseSetValue(weightKg: row.weightKg, reps: row.reps))
-        .toList(growable: false);
+    return rows.map(_setFromRow).toList(growable: false);
   }
 
   Future<WorkoutSessionSummary> getSessionSummary(String sessionId) async {
@@ -281,12 +286,7 @@ class WorkoutRepository {
           equipmentId: equipment.id,
           equipmentName: equipment.name,
           recordType: record.recordType,
-          sets: setRows
-              .map(
-                (row) =>
-                    ExerciseSetValue(weightKg: row.weightKg, reps: row.reps),
-              )
-              .toList(growable: false),
+          sets: setRows.map(_setFromRow).toList(growable: false),
         ),
       );
     }
@@ -300,7 +300,10 @@ class WorkoutRepository {
     final sessions =
         await (_database.select(_database.workoutSessions)
               ..where((row) => row.status.equals('completed'))
-              ..orderBy([(row) => OrderingTerm.desc(row.startedAt)]))
+              ..orderBy([
+                (row) => OrderingTerm.desc(row.startedAt),
+                (row) => OrderingTerm.desc(row.endedAt),
+              ]))
             .get();
     return Future.wait([
       for (final session in sessions) getSessionSummary(session.id),
@@ -350,6 +353,75 @@ class WorkoutRepository {
     )..where((row) => row.id.equals(sessionId))).go();
   }
 
+  Future<void> updateExerciseSet({
+    required String setId,
+    required int? weightKg,
+    required int reps,
+  }) async {
+    if (reps <= 0) throw ArgumentError.value(reps, 'reps', '1回以上必要です');
+    if (weightKg != null && (weightKg < 0 || weightKg % 5 != 0)) {
+      throw ArgumentError.value(weightKg, 'weightKg', '5kg単位で入力してください');
+    }
+    final result = await _editableSet(setId);
+    final record = result.readTable(_database.exerciseRecords);
+    if (record.recordType == 'bodyweight' && weightKg != null) {
+      throw ArgumentError.value(weightKg, 'weightKg', '自重種目に重量は設定できません');
+    }
+    final timestamp = _now();
+    await (_database.update(
+      _database.exerciseSets,
+    )..where((row) => row.id.equals(setId))).write(
+      ExerciseSetsCompanion(
+        weightKg: Value(weightKg),
+        reps: Value(reps),
+        updatedAt: Value(timestamp),
+      ),
+    );
+  }
+
+  Future<void> deleteExerciseSet(String setId) async {
+    await _database.transaction(() async {
+      final result = await _editableSet(setId);
+      final set = result.readTable(_database.exerciseSets);
+      await (_database.delete(
+        _database.exerciseSets,
+      )..where((row) => row.id.equals(setId))).go();
+      final remainingQuery = _database.select(_database.exerciseSets)
+        ..where((row) => row.exerciseRecordId.equals(set.exerciseRecordId))
+        ..orderBy([(row) => OrderingTerm.asc(row.setNumber)]);
+      final remaining = await remainingQuery.get();
+      if (remaining.isEmpty) {
+        await (_database.delete(
+          _database.exerciseRecords,
+        )..where((row) => row.id.equals(set.exerciseRecordId))).go();
+        return;
+      }
+      for (final (index, row) in remaining.indexed) {
+        final nextNumber = index + 1;
+        if (row.setNumber == nextNumber) continue;
+        await (_database.update(_database.exerciseSets)
+              ..where((item) => item.id.equals(row.id)))
+            .write(ExerciseSetsCompanion(setNumber: Value(nextNumber)));
+      }
+    });
+  }
+
+  Future<void> updateSessionNote(String sessionId, String? note) async {
+    final normalized = note?.trim();
+    final updated =
+        await (_database.update(
+          _database.workoutSessions,
+        )..where((row) => row.id.equals(sessionId))).write(
+          WorkoutSessionsCompanion(
+            note: Value(
+              normalized == null || normalized.isEmpty ? null : normalized,
+            ),
+            updatedAt: Value(_now()),
+          ),
+        );
+    if (updated == 0) throw StateError('セッションが見つかりません');
+  }
+
   Future<void> completeSession(String sessionId) async {
     await _database.transaction(() async {
       final session = await (_database.select(
@@ -389,6 +461,38 @@ class WorkoutRepository {
       status: row.status,
       startedAt: row.startedAt,
       endedAt: row.endedAt,
+      note: row.note,
     );
   }
+
+  Future<TypedResult> _editableSet(String setId) async {
+    final query =
+        _database.select(_database.exerciseSets).join([
+          innerJoin(
+            _database.exerciseRecords,
+            _database.exerciseRecords.id.equalsExp(
+              _database.exerciseSets.exerciseRecordId,
+            ),
+          ),
+          innerJoin(
+            _database.workoutSessions,
+            _database.workoutSessions.id.equalsExp(
+              _database.exerciseRecords.workoutSessionId,
+            ),
+          ),
+        ])..where(
+          _database.exerciseSets.id.equals(setId) &
+              _database.workoutSessions.status.equals('draft'),
+        );
+    final result = await query.getSingleOrNull();
+    if (result == null) throw StateError('編集中のセットが見つかりません');
+    return result;
+  }
+
+  static ExerciseSetValue _setFromRow(ExerciseSetRow row) => ExerciseSetValue(
+    id: row.id,
+    setNumber: row.setNumber,
+    weightKg: row.weightKg,
+    reps: row.reps,
+  );
 }

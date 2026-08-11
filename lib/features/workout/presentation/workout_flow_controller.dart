@@ -66,6 +66,38 @@ class WorkoutFlowController
     );
   }
 
+  Future<List<ExerciseSetValue>> updateSet({
+    required String equipmentId,
+    required String setId,
+    required int? weightKg,
+    required int reps,
+  }) async {
+    final session = await _requireActiveSession();
+    await _repository.updateExerciseSet(
+      setId: setId,
+      weightKg: weightKg,
+      reps: reps,
+    );
+    state = AsyncData(session);
+    return _repository.getSessionSets(
+      sessionId: session.id,
+      equipmentId: equipmentId,
+    );
+  }
+
+  Future<List<ExerciseSetValue>> deleteSet({
+    required String equipmentId,
+    required String setId,
+  }) async {
+    final session = await _requireActiveSession();
+    await _repository.deleteExerciseSet(setId);
+    state = AsyncData(session);
+    return _repository.getSessionSets(
+      sessionId: session.id,
+      equipmentId: equipmentId,
+    );
+  }
+
   Future<WorkoutSessionSummary> summary() async {
     final session = await _repository.getActiveSession();
     if (session == null) {
@@ -74,11 +106,9 @@ class WorkoutFlowController
     return _repository.getSessionSummary(session.id);
   }
 
-  Future<String> complete() async {
-    final session = await _repository.getActiveSession();
-    if (session == null) {
-      throw StateError('進行中のトレーニングがありません');
-    }
+  Future<String> complete({String? note}) async {
+    final session = await _requireActiveSession();
+    await _repository.updateSessionNote(session.id, note);
     await _repository.completeSession(session.id);
     state = const AsyncData(null);
     return session.id;
@@ -96,5 +126,13 @@ class WorkoutFlowController
       state = AsyncError(error, stackTrace);
       rethrow;
     }
+  }
+
+  Future<WorkoutSessionSnapshot> _requireActiveSession() async {
+    final session = await _repository.getActiveSession();
+    if (session == null) {
+      throw StateError('進行中のトレーニングがありません');
+    }
+    return session;
   }
 }

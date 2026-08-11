@@ -111,12 +111,19 @@ class WorkoutReviewScreen extends ConsumerStatefulWidget {
 
 class _WorkoutReviewScreenState extends ConsumerState<WorkoutReviewScreen> {
   late Future<WorkoutSessionSummary> _summary;
+  final _noteController = TextEditingController();
   var _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _summary = ref.read(workoutFlowControllerProvider.notifier).summary();
+    _summary = _loadSummary();
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
   }
 
   @override
@@ -161,6 +168,18 @@ class _WorkoutReviewScreenState extends ConsumerState<WorkoutReviewScreen> {
                           '${summary.exercises.length}種目・${summary.totalSetCount}セット',
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _noteController,
+                        minLines: 2,
+                        maxLines: 4,
+                        maxLength: 500,
+                        decoration: const InputDecoration(
+                          labelText: 'トレーニングメモ（任意）',
+                          hintText: '体調や気づきを残せます',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -181,7 +200,7 @@ class _WorkoutReviewScreenState extends ConsumerState<WorkoutReviewScreen> {
     try {
       final sessionId = await ref
           .read(workoutFlowControllerProvider.notifier)
-          .complete();
+          .complete(note: _noteController.text);
       if (mounted) context.go('/workout/complete/$sessionId');
     } catch (_) {
       if (!mounted) return;
@@ -190,6 +209,14 @@ class _WorkoutReviewScreenState extends ConsumerState<WorkoutReviewScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('記録を完了できませんでした')));
     }
+  }
+
+  Future<WorkoutSessionSummary> _loadSummary() async {
+    final summary = await ref
+        .read(workoutFlowControllerProvider.notifier)
+        .summary();
+    _noteController.text = summary.session.note ?? '';
+    return summary;
   }
 }
 

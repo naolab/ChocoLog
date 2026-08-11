@@ -71,6 +71,23 @@ void main() {
     expect(currentSets.last.weightKg, isNull);
     expect(await database.select(database.exerciseSets).get(), hasLength(8));
 
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('5セット目の操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('編集'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '30');
+    await tester.enterText(find.byType(TextFormField).last, '10');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    final editedSets = await repository.getSessionSets(
+      sessionId: activeSession.id,
+      equipmentId: 'chest-press',
+    );
+    expect(editedSets.last.weightKg, 30);
+    expect(editedSets.last.reps, 10);
+
     await tester.tap(find.text('完了'));
     await tester.pumpAndSettle();
     expect(find.text('今日の記録'), findsOneWidget);
@@ -101,6 +118,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('2種目・8セット'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '今日は調子が良かった');
     await tester.tap(find.text('保存して完了'));
     await tester.pumpAndSettle();
 
@@ -132,8 +150,9 @@ void main() {
     expect(find.text('トレーニング詳細'), findsOneWidget);
     expect(find.text('チェストプレス'), findsOneWidget);
     expect(find.text('アブベンチ'), findsOneWidget);
-    expect(find.textContaining('重量未設定 × 15回'), findsOneWidget);
+    expect(find.textContaining('30kg × 10回'), findsOneWidget);
     expect(find.textContaining('自重 × 15回'), findsNWidgets(3));
+    expect(find.text('今日は調子が良かった'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).last, const Offset(0, -900));
     await tester.pumpAndSettle();

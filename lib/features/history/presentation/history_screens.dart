@@ -179,6 +179,15 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
                 '${summary.exercises.length}種目・${summary.totalSetCount}セット',
                 style: const TextStyle(color: ChocoLogColors.muted),
               ),
+              if (summary.session.note != null) ...[
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(summary.session.note!),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               for (final exercise in summary.exercises) ...[
                 Card(
