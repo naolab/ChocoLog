@@ -307,6 +307,49 @@ class WorkoutRepository {
     ]);
   }
 
+  Future<WorkoutSessionSnapshot> duplicateCompletedSession(
+    String sourceSessionId,
+  ) async {
+    final source = await getSessionSummary(sourceSessionId);
+    if (source.session.status != 'completed') {
+      throw StateError('完了済みの記録だけ複製できます');
+    }
+    final duplicated = await startSession(studioId: source.session.studioId);
+    try {
+      var copiedExerciseCount = 0;
+      for (final exercise in source.exercises) {
+        if (exercise.sets.isEmpty) continue;
+        await addExerciseSets(
+          sessionId: duplicated.id,
+          equipmentId: exercise.equipmentId,
+          sets: exercise.sets,
+        );
+        copiedExerciseCount++;
+      }
+      if (copiedExerciseCount == 0) {
+        throw StateError('複製できるセット記録がありません');
+      }
+      return duplicated;
+    } catch (_) {
+      await (_database.delete(
+        _database.workoutSessions,
+      )..where((row) => row.id.equals(duplicated.id))).go();
+      rethrow;
+    }
+  }
+
+  Future<void> deleteCompletedSession(String sessionId) async {
+    final session = await (_database.select(
+      _database.workoutSessions,
+    )..where((row) => row.id.equals(sessionId))).getSingleOrNull();
+    if (session == null || session.status != 'completed') {
+      throw StateError('削除できる完了済み記録が見つかりません');
+    }
+    await (_database.delete(
+      _database.workoutSessions,
+    )..where((row) => row.id.equals(sessionId))).go();
+  }
+
   Future<void> completeSession(String sessionId) async {
     await _database.transaction(() async {
       final session = await (_database.select(

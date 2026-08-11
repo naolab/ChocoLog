@@ -145,4 +145,39 @@ void main() {
     expect(history.first.exercises.single.equipmentName, 'アブベンチ');
     expect(history.first.totalSetCount, 2);
   });
+
+  test('完了済みメニューを複製し、過去の記録を削除できる', () async {
+    final source = await workoutRepository.startSession();
+    await workoutRepository.addExerciseSets(
+      sessionId: source.id,
+      equipmentId: 'chest-press',
+      sets: const [
+        ExerciseSetValue(weightKg: 20, reps: 15),
+        ExerciseSetValue(weightKg: 25, reps: 12),
+      ],
+    );
+    await workoutRepository.completeSession(source.id);
+
+    final duplicated = await workoutRepository.duplicateCompletedSession(
+      source.id,
+    );
+    final duplicatedSummary = await workoutRepository.getSessionSummary(
+      duplicated.id,
+    );
+
+    expect(duplicatedSummary.session.status, 'draft');
+    expect(duplicatedSummary.exercises.single.sets.map((set) => set.weightKg), [
+      20,
+      25,
+    ]);
+    expect(duplicatedSummary.exercises.single.sets.map((set) => set.reps), [
+      15,
+      12,
+    ]);
+
+    await workoutRepository.deleteCompletedSession(source.id);
+
+    expect(await workoutRepository.getCompletedSessionSummaries(), isEmpty);
+    expect((await workoutRepository.getActiveSession())?.id, duplicated.id);
+  });
 }
