@@ -33,6 +33,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Generated locally with `dart run build_runner build`.
+**/*.g.dart
+
 # Symbolication related
 app.*.symbols
 

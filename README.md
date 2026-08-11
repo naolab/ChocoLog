@@ -26,6 +26,9 @@ chocoZAP利用者向けの、筋力トレーニングと有酸素運動の記録
 
 ```shell
 flutter pub get
+dart run build_runner build
 flutter analyze
 flutter test
 ```
+
+`*.g.dart`はリポジトリへ含めず、ローカルまたはCIで生成します。
