@@ -1,10 +1,30 @@
 import 'package:chocolog/app/theme.dart';
+import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
+import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-final appRouter = GoRouter(
-  initialLocation: '/home',
+GoRouter createAppRouter(
+  OnboardingPreferences onboardingPreferences,
+) => GoRouter(
+  initialLocation: onboardingPreferences.isCompleted ? '/home' : '/onboarding',
+  redirect: (context, state) {
+    final isOnboarding = state.matchedLocation == '/onboarding';
+    if (!onboardingPreferences.isCompleted) {
+      return isOnboarding ? null : '/onboarding';
+    }
+    return isOnboarding ? '/home' : null;
+  },
   routes: [
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => OnboardingScreen(
+        onCompleted: (settings) async {
+          await onboardingPreferences.complete(settings);
+          if (context.mounted) context.go('/home');
+        },
+      ),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           _AppShell(navigationShell: navigationShell),
@@ -13,7 +33,8 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/home',
-              builder: (context, state) => const _HomeTab(),
+              builder: (context, state) =>
+                  _HomeTab(weeklyTarget: onboardingPreferences.weeklyTarget),
             ),
           ],
         ),
@@ -107,7 +128,9 @@ class _AppShell extends StatelessWidget {
 }
 
 class _HomeTab extends StatelessWidget {
-  const _HomeTab();
+  const _HomeTab({required this.weeklyTarget});
+
+  final int weeklyTarget;
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +149,7 @@ class _HomeTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '今週 0 / 2回',
+                      '今週 0 / $weeklyTarget回',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),

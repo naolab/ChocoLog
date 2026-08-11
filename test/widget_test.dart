@@ -1,10 +1,51 @@
 import 'package:chocolog/app/app.dart';
+import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('ホームから通常4タブへ移動できる', (tester) async {
-    await tester.pumpWidget(const ChocoLogApp());
+  testWidgets('初回起動でオンボーディングを完了できる', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await OnboardingPreferences.load();
+
+    await tester.pumpWidget(ChocoLogApp(onboardingPreferences: preferences));
+    await tester.pumpAndSettle();
+
+    expect(find.text('いつものトレーニングを\nかんたんに記録'), findsOneWidget);
+    await tester.tap(find.text('はじめる'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('週2回　おすすめ'), findsOneWidget);
+    await tester.tap(find.text('週3回'));
+    await tester.tap(find.text('次へ'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('よく行く店舗'), findsOneWidget);
+    await tester.tap(find.text('今は設定しない'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('リマインダー'), findsOneWidget);
+    await tester.tap(find.text('リマインダーを設定'));
+    await tester.pump();
+    await tester.tap(find.text('設定を保存して始める'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('トレーニングを始める'), findsOneWidget);
+    expect(find.text('今週 0 / 3回'), findsOneWidget);
+    expect(preferences.isCompleted, isTrue);
+    expect(preferences.weeklyTarget, 3);
+    expect(preferences.reminderEnabled, isTrue);
+    expect(preferences.reminderWeekdays, [DateTime.tuesday, DateTime.saturday]);
+    expect(preferences.reminderHour, 19);
+    expect(preferences.reminderMinute, 0);
+  });
+
+  testWidgets('完了済みならホームから通常4タブへ移動できる', (tester) async {
+    SharedPreferences.setMockInitialValues({'onboarding.completed': true});
+    final preferences = await OnboardingPreferences.load();
+
+    await tester.pumpWidget(ChocoLogApp(onboardingPreferences: preferences));
     await tester.pumpAndSettle();
 
     expect(find.text('トレーニングを始める'), findsOneWidget);
