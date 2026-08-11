@@ -3,15 +3,16 @@ import 'dart:math' as math;
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
+import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key, required this.weeklyTarget});
+  const HomeScreen({super.key, required this.preferences});
 
-  final int weeklyTarget;
+  final OnboardingPreferences preferences;
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -25,6 +26,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _data = _loadData();
+    widget.preferences.addListener(_preferencesChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.preferences.removeListener(_preferencesChanged);
+    super.dispose();
   }
 
   @override
@@ -45,9 +53,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               return _HomeError(onRetry: _reload);
             }
             final data = snapshot.requireData;
-            final progress = widget.weeklyTarget == 0
+            final weeklyTarget = widget.preferences.weeklyTarget;
+            final progress = weeklyTarget == 0
                 ? 0.0
-                : math.min(data.weeklyCount / widget.weeklyTarget, 1.0);
+                : math.min(data.weeklyCount / weeklyTarget, 1.0);
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
@@ -66,17 +75,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '今週 ${data.weeklyCount} / ${widget.weeklyTarget}回',
+                            '今週 ${data.weeklyCount} / $weeklyTarget回',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 12),
                           LinearProgressIndicator(value: progress),
                           const SizedBox(height: 10),
                           Text(
-                            _progressMessage(
-                              data.weeklyCount,
-                              widget.weeklyTarget,
-                            ),
+                            _progressMessage(data.weeklyCount, weeklyTarget),
                             style: const TextStyle(color: ChocoLogColors.muted),
                           ),
                         ],
@@ -167,6 +173,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } catch (_) {
       // FutureBuilder displays the retry state.
     }
+  }
+
+  void _preferencesChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _duplicate(String sourceSessionId) async {

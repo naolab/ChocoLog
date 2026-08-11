@@ -258,4 +258,22 @@ void main() {
     expect(summary.exercises.single.equipmentName, 'トレッドミル');
     expect(summary.exercises.single.timerStatus, 'completed');
   });
+
+  test('全記録を削除しても器具マスタは保持する', () async {
+    final session = await workoutRepository.startSession();
+    await workoutRepository.addExerciseSets(
+      sessionId: session.id,
+      equipmentId: 'chest-press',
+      sets: const [ExerciseSetValue(weightKg: 20, reps: 15)],
+    );
+    await workoutRepository.completeSession(session.id);
+
+    await workoutRepository.deleteAllWorkoutSessions();
+
+    expect(await workoutRepository.getCompletedSessionSummaries(), isEmpty);
+    expect(await database.select(database.workoutSessions).get(), isEmpty);
+    expect(await database.select(database.exerciseRecords).get(), isEmpty);
+    expect(await database.select(database.exerciseSets).get(), isEmpty);
+    expect(await database.select(database.equipment).get(), hasLength(12));
+  });
 }

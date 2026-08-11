@@ -85,11 +85,22 @@ void main() {
 
     await tester.tap(find.text('レポート'));
     await tester.pumpAndSettle();
-    expect(find.text('記録を続けると週・月の成果を確認できます'), findsOneWidget);
+    expect(find.text('この期間の記録はありません'), findsOneWidget);
 
     await tester.tap(find.text('設定'));
     await tester.pumpAndSettle();
-    expect(find.text('目標回数や通知を設定できます'), findsOneWidget);
+    expect(find.text('週の目標回数'), findsOneWidget);
+    expect(find.text('週間リマインダー'), findsOneWidget);
+
+    await tester.tap(find.text('週2回'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('週3回').last);
+    await tester.pumpAndSettle();
+    expect(preferences.weeklyTarget, 3);
+
+    await tester.tap(find.text('ホーム'));
+    await tester.pumpAndSettle();
+    expect(find.text('今週 0 / 3回'), findsOneWidget);
   });
 
   testWidgets('ホームの前回メニューから同じセットを開始できる', (tester) async {

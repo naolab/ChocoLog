@@ -1,0 +1,302 @@
+import 'package:chocolog/app/theme.dart';
+import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
+import 'package:chocolog/features/workout/data/workout_repository.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+enum _ReportPeriod { week, month }
+
+class ReportsScreen extends ConsumerStatefulWidget {
+  const ReportsScreen({super.key, required this.preferences});
+
+  final OnboardingPreferences preferences;
+
+  @override
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  late Future<List<WorkoutSessionSummary>> _history;
+  var _period = _ReportPeriod.week;
+
+  @override
+  void initState() {
+    super.initState();
+    _history = _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('レポート')),
+      body: FutureBuilder<List<WorkoutSessionSummary>>(
+        future: _history,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return _ReportError(onRetry: _reload);
+          }
+          final report = _ReportData.create(
+            history: snapshot.requireData,
+            period: _period,
+          );
+          return RefreshIndicator(
+            onRefresh: _reload,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              children: [
+                SegmentedButton<_ReportPeriod>(
+                  segments: const [
+                    ButtonSegment(value: _ReportPeriod.week, label: Text('週')),
+                    ButtonSegment(value: _ReportPeriod.month, label: Text('月')),
+                  ],
+                  selected: {_period},
+                  onSelectionChanged: (selection) {
+                    setState(() => _period = selection.single);
+                  },
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  report.periodLabel,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: ChocoLogColors.muted),
+                ),
+                const SizedBox(height: 14),
+                if (report.sessions.isEmpty)
+                  _EmptyReport(onStart: () => context.push('/workout/studio'))
+                else ...[
+                  ListenableBuilder(
+                    listenable: widget.preferences,
+                    builder: (context, _) => _SummaryCard(
+                      report: report,
+                      weeklyTarget: widget.preferences.weeklyTarget,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'よく使った器具',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  for (final (index, equipment) in report.equipment.indexed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _EquipmentCard(
+                        rank: index + 1,
+                        equipment: equipment,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<List<WorkoutSessionSummary>> _load() =>
+      ref.read(workoutRepositoryProvider).getCompletedSessionSummaries();
+
+  Future<void> _reload() async {
+    final history = _load();
+    setState(() => _history = history);
+    await history;
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.report, required this.weeklyTarget});
+
+  final _ReportData report;
+  final int weeklyTarget;
+
+  @override
+  Widget build(BuildContext context) {
+    final targetLabel = report.period == _ReportPeriod.week
+        ? ' / $weeklyTarget回'
+        : '回';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            _Metric(
+              label: '運動',
+              value: '${report.sessions.length}$targetLabel',
+            ),
+            _Metric(label: '筋トレ', value: '${report.totalSets}セット'),
+            _Metric(label: '有酸素', value: '${report.cardioMinutes}分'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Metric extends StatelessWidget {
+  const _Metric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(color: ChocoLogColors.muted)),
+          const SizedBox(height: 6),
+          Text(value, style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+    );
+  }
+}
+
+class _EquipmentCard extends StatelessWidget {
+  const _EquipmentCard({required this.rank, required this.equipment});
+
+  final int rank;
+  final _EquipmentReport equipment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: ChocoLogColors.yellow,
+          foregroundColor: Colors.black,
+          child: Text('$rank'),
+        ),
+        title: Text(equipment.name),
+        subtitle: Text(equipment.performanceLabel),
+        trailing: Text('${equipment.usageCount}回'),
+      ),
+    );
+  }
+}
+
+class _EmptyReport extends StatelessWidget {
+  const _EmptyReport({required this.onStart});
+
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Icon(Icons.bar_chart_outlined, size: 44),
+            const SizedBox(height: 12),
+            const Text('この期間の記録はありません'),
+            const SizedBox(height: 16),
+            OutlinedButton(onPressed: onStart, child: const Text('記録を始める')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReportError extends StatelessWidget {
+  const _ReportError({required this.onRetry});
+
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: OutlinedButton(onPressed: onRetry, child: const Text('再読み込み')),
+  );
+}
+
+class _ReportData {
+  const _ReportData({
+    required this.period,
+    required this.start,
+    required this.end,
+    required this.sessions,
+    required this.equipment,
+  });
+
+  final _ReportPeriod period;
+  final DateTime start;
+  final DateTime end;
+  final List<WorkoutSessionSummary> sessions;
+  final List<_EquipmentReport> equipment;
+
+  int get totalSets =>
+      sessions.fold(0, (sum, item) => sum + item.totalSetCount);
+  int get cardioMinutes =>
+      sessions.fold(0, (sum, item) => sum + item.totalCardioSeconds) ~/ 60;
+  String get periodLabel => period == _ReportPeriod.week
+      ? '${start.month}月${start.day}日〜${end.month}月${end.day}日'
+      : '${start.year}年${start.month}月';
+
+  factory _ReportData.create({
+    required List<WorkoutSessionSummary> history,
+    required _ReportPeriod period,
+  }) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = period == _ReportPeriod.week
+        ? today.subtract(Duration(days: today.weekday - 1))
+        : DateTime(today.year, today.month);
+    final end = period == _ReportPeriod.week
+        ? start.add(const Duration(days: 6))
+        : DateTime(today.year, today.month + 1, 0);
+    final sessions = history.where((summary) {
+      final local = summary.session.startedAt.toLocal();
+      final date = DateTime(local.year, local.month, local.day);
+      return !date.isBefore(start) && !date.isAfter(end);
+    }).toList();
+    final byEquipment = <String, List<WorkoutExerciseSummary>>{};
+    for (final session in sessions) {
+      for (final exercise in session.exercises) {
+        byEquipment.putIfAbsent(exercise.equipmentName, () => []).add(exercise);
+      }
+    }
+    final equipment = [
+      for (final entry in byEquipment.entries)
+        _EquipmentReport(name: entry.key, records: entry.value),
+    ]..sort((a, b) => b.usageCount.compareTo(a.usageCount));
+    return _ReportData(
+      period: period,
+      start: start,
+      end: end,
+      sessions: sessions,
+      equipment: equipment,
+    );
+  }
+}
+
+class _EquipmentReport {
+  const _EquipmentReport({required this.name, required this.records});
+
+  final String name;
+  final List<WorkoutExerciseSummary> records;
+
+  int get usageCount => records.length;
+  String get performanceLabel {
+    final cardioSeconds = records.fold(
+      0,
+      (sum, record) => sum + (record.durationSeconds ?? 0),
+    );
+    if (cardioSeconds > 0) return '累計 ${cardioSeconds ~/ 60}分';
+    final sets = records.expand((record) => record.sets).toList();
+    final weights = sets.map((set) => set.weightKg).whereType<int>();
+    final maximum = weights.isEmpty
+        ? null
+        : weights.reduce((a, b) => a > b ? a : b);
+    return maximum == null
+        ? '合計 ${sets.length}セット'
+        : '合計 ${sets.length}セット・最大 ${maximum}kg';
+  }
+}

@@ -548,6 +548,14 @@ class WorkoutRepository {
     )..where((row) => row.id.equals(sessionId))).go();
   }
 
+  Future<void> deleteAllWorkoutSessions() async {
+    await _database.transaction(() async {
+      await _database.delete(_database.exerciseSets).go();
+      await _database.delete(_database.exerciseRecords).go();
+      await _database.delete(_database.workoutSessions).go();
+    });
+  }
+
   Future<void> updateExerciseSet({
     required String setId,
     required int? weightKg,
