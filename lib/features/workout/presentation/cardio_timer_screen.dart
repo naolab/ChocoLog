@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
+import 'package:chocolog/features/workout/data/cardio_live_activity_service.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
@@ -160,6 +161,12 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
         }
       });
       _syncTicker();
+      if (record != null && record.timerStatus != 'completed') {
+        await CardioLiveActivityService().sync(
+          record: record,
+          equipmentName: equipment?.name ?? '有酸素運動',
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -218,6 +225,10 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
         _processing = false;
       });
       _syncTicker();
+      await CardioLiveActivityService().sync(
+        record: record,
+        equipmentName: _equipment?.name ?? '有酸素運動',
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _processing = false);
