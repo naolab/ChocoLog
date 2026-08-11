@@ -1,9 +1,11 @@
-import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/features/equipment/presentation/equipment_selection_screen.dart';
 import 'package:chocolog/features/history/presentation/history_screens.dart';
 import 'package:chocolog/features/home/presentation/home_screen.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:chocolog/features/reports/presentation/reports_screen.dart';
+import 'package:chocolog/features/settings/data/reminder_service.dart';
+import 'package:chocolog/features/settings/presentation/settings_screen.dart';
 import 'package:chocolog/features/workout/presentation/strength_entry_screen.dart';
 import 'package:chocolog/features/workout/presentation/cardio_timer_screen.dart';
 import 'package:chocolog/features/workout/presentation/studio_selection_screen.dart';
@@ -27,7 +29,24 @@ GoRouter createAppRouter(
       path: '/onboarding',
       builder: (context, state) => OnboardingScreen(
         onCompleted: (settings) async {
-          await onboardingPreferences.complete(settings);
+          var reminderEnabled = settings.reminderEnabled;
+          if (reminderEnabled && ReminderService.instance.isSupported) {
+            reminderEnabled = await ReminderService.instance.scheduleWeekly(
+              weekdays: settings.reminderWeekdays,
+              hour: settings.reminderHour,
+              minute: settings.reminderMinute,
+              requestPermission: true,
+            );
+          }
+          await onboardingPreferences.complete(
+            OnboardingSettings(
+              weeklyTarget: settings.weeklyTarget,
+              reminderEnabled: reminderEnabled,
+              reminderWeekdays: settings.reminderWeekdays,
+              reminderHour: settings.reminderHour,
+              reminderMinute: settings.reminderMinute,
+            ),
+          );
           if (context.mounted) context.go('/home');
         },
       ),
@@ -41,7 +60,7 @@ GoRouter createAppRouter(
             GoRoute(
               path: '/home',
               builder: (context, state) =>
-                  HomeScreen(weeklyTarget: onboardingPreferences.weeklyTarget),
+                  HomeScreen(preferences: onboardingPreferences),
             ),
           ],
         ),
@@ -65,11 +84,8 @@ GoRouter createAppRouter(
           routes: [
             GoRoute(
               path: '/reports',
-              builder: (context, state) => const _EmptyTab(
-                title: 'レポート',
-                message: '記録を続けると週・月の成果を確認できます',
-                icon: Icons.bar_chart_outlined,
-              ),
+              builder: (context, state) =>
+                  ReportsScreen(preferences: onboardingPreferences),
             ),
           ],
         ),
@@ -77,11 +93,8 @@ GoRouter createAppRouter(
           routes: [
             GoRoute(
               path: '/settings',
-              builder: (context, state) => const _EmptyTab(
-                title: '設定',
-                message: '目標回数や通知を設定できます',
-                icon: Icons.settings_outlined,
-              ),
+              builder: (context, state) =>
+                  SettingsScreen(preferences: onboardingPreferences),
             ),
           ],
         ),
@@ -167,38 +180,6 @@ class _AppShell extends StatelessWidget {
             label: '設定',
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EmptyTab extends StatelessWidget {
-  const _EmptyTab({
-    required this.title,
-    required this.message,
-    required this.icon,
-  });
-
-  final String title;
-  final String message;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 48, color: ChocoLogColors.muted),
-              const SizedBox(height: 16),
-              Text(message, textAlign: TextAlign.center),
-            ],
-          ),
-        ),
       ),
     );
   }

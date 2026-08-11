@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class OnboardingSettings {
   const OnboardingSettings({
@@ -16,7 +17,7 @@ class OnboardingSettings {
   final int reminderMinute;
 }
 
-class OnboardingPreferences {
+class OnboardingPreferences extends ChangeNotifier {
   OnboardingPreferences(this._preferences);
 
   static const _completedKey = 'onboarding.completed';
@@ -45,6 +46,11 @@ class OnboardingPreferences {
   int get reminderMinute => _preferences.getInt(_reminderMinuteKey) ?? 0;
 
   Future<void> complete(OnboardingSettings settings) async {
+    await update(settings);
+    await _preferences.setBool(_completedKey, true);
+  }
+
+  Future<void> update(OnboardingSettings settings) async {
     await _preferences.setInt(_weeklyTargetKey, settings.weeklyTarget);
     await _preferences.setBool(_reminderEnabledKey, settings.reminderEnabled);
     await _preferences.setStringList(
@@ -53,6 +59,6 @@ class OnboardingPreferences {
     );
     await _preferences.setInt(_reminderHourKey, settings.reminderHour);
     await _preferences.setInt(_reminderMinuteKey, settings.reminderMinute);
-    await _preferences.setBool(_completedKey, true);
+    notifyListeners();
   }
 }
