@@ -215,4 +215,47 @@ void main() {
     expect(updated.first.reps, 12);
     expect(summary.session.note, 'フォームを意識した');
   });
+
+  test('有酸素タイマーをバックグラウンド時間込みで復元できる', () async {
+    var current = DateTime.utc(2026, 8, 11, 10);
+    var cardioId = 0;
+    final repository = WorkoutRepository(
+      database,
+      idGenerator: () => 'cardio-${cardioId++}',
+      now: () => current,
+    );
+    final session = await repository.startSession();
+    final started = await repository.startCardio(
+      sessionId: session.id,
+      equipmentId: 'treadmill',
+    );
+
+    current = DateTime.utc(2026, 8, 11, 10, 5);
+    final restored = await repository.getCardioRecord(
+      sessionId: session.id,
+      equipmentId: 'treadmill',
+    );
+    expect(restored?.elapsedSecondsAt(current), 300);
+    await expectLater(
+      repository.completeSession(session.id),
+      throwsA(isA<StateError>()),
+    );
+
+    await repository.pauseCardio(started.id);
+    current = DateTime.utc(2026, 8, 11, 10, 7);
+    await repository.resumeCardio(started.id);
+    current = DateTime.utc(2026, 8, 11, 10, 10);
+    final completed = await repository.finishCardio(
+      recordId: started.id,
+      distanceKm: 1.5,
+    );
+    await repository.completeSession(session.id);
+
+    final summary = await repository.getSessionSummary(session.id);
+    expect(completed.durationSeconds, 480);
+    expect(completed.distanceKm, 1.5);
+    expect(summary.totalCardioSeconds, 480);
+    expect(summary.exercises.single.equipmentName, 'トレッドミル');
+    expect(summary.exercises.single.timerStatus, 'completed');
+  });
 }

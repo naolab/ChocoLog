@@ -64,15 +64,11 @@ class _EquipmentSelectionScreenState
   }
 
   void _openEquipment(EquipmentItem equipment) {
-    if (equipment.metricType == 'cardio') {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('有酸素運動の記録は現在準備中です')));
-      return;
-    }
-    final route = equipment.metricType == 'bodyweight'
-        ? 'bodyweight'
-        : 'strength';
+    final route = switch (equipment.metricType) {
+      'cardio' => 'cardio',
+      'bodyweight' => 'bodyweight',
+      _ => 'strength',
+    };
     context.push('/workout/$route/${equipment.id}');
   }
 }

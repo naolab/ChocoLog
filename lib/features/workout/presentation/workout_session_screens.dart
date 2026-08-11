@@ -93,9 +93,11 @@ class _WorkoutSessionScreenState extends ConsumerState<WorkoutSessionScreen> {
   }
 
   Future<void> _openExercise(WorkoutExerciseSummary exercise) async {
-    final type = exercise.recordType == 'bodyweight'
-        ? 'bodyweight'
-        : 'strength';
+    final type = switch (exercise.recordType) {
+      'cardio' => 'cardio',
+      'bodyweight' => 'bodyweight',
+      _ => 'strength',
+    };
     await context.push('/workout/$type/${exercise.equipmentId}');
     if (mounted) _reload();
   }
@@ -146,6 +148,11 @@ class _WorkoutReviewScreenState extends ConsumerState<WorkoutReviewScreen> {
             );
           }
           final summary = snapshot.requireData;
+          final hasUnfinishedCardio = summary.exercises.any(
+            (exercise) =>
+                exercise.recordType == 'cardio' &&
+                exercise.timerStatus != 'completed',
+          );
           return Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             child: Column(
@@ -164,9 +171,7 @@ class _WorkoutReviewScreenState extends ConsumerState<WorkoutReviewScreen> {
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('合計'),
-                        trailing: Text(
-                          '${summary.exercises.length}種目・${summary.totalSetCount}セット',
-                        ),
+                        trailing: Text(_sessionTotalLabel(summary)),
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -180,11 +185,19 @@ class _WorkoutReviewScreenState extends ConsumerState<WorkoutReviewScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
+                      if (hasUnfinishedCardio)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: Text(
+                            '計測中の有酸素タイマーを終了してください',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
                     ],
                   ),
                 ),
                 FilledButton(
-                  onPressed: _saving ? null : _complete,
+                  onPressed: _saving || hasUnfinishedCardio ? null : _complete,
                   child: Text(_saving ? '保存中…' : '保存して完了'),
                 ),
               ],
@@ -256,7 +269,7 @@ class WorkoutCompleteScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  '${summary.exercises.length}種目・${summary.totalSetCount}セット',
+                  _sessionTotalLabel(summary),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
@@ -295,6 +308,15 @@ class _RetryView extends StatelessWidget {
 }
 
 String _exerciseLabel(WorkoutExerciseSummary exercise) {
+  if (exercise.recordType == 'cardio') {
+    if (exercise.timerStatus != 'completed') {
+      return exercise.timerStatus == 'paused' ? '一時停止中' : '計測中';
+    }
+    final duration = _durationLabel(exercise.durationSeconds ?? 0);
+    return exercise.distanceKm == null
+        ? duration
+        : '$duration・${exercise.distanceKm}km';
+  }
   if (exercise.sets.isEmpty) return 'セットなし';
   final labels = exercise.sets.map((set) {
     final metric = set.weightKg == null
@@ -310,4 +332,21 @@ String _exerciseLabel(WorkoutExerciseSummary exercise) {
   return labels.indexed
       .map((entry) => '${entry.$1 + 1}. ${entry.$2}')
       .join(' / ');
+}
+
+String _sessionTotalLabel(WorkoutSessionSummary summary) {
+  final parts = ['${summary.exercises.length}種目'];
+  if (summary.totalSetCount > 0) parts.add('${summary.totalSetCount}セット');
+  if (summary.totalCardioSeconds > 0) {
+    parts.add(_durationLabel(summary.totalCardioSeconds));
+  }
+  return parts.join('・');
+}
+
+String _durationLabel(int seconds) {
+  final minutes = seconds ~/ 60;
+  final remainder = seconds % 60;
+  if (minutes == 0) return '$remainder秒';
+  if (remainder == 0) return '$minutes分';
+  return '$minutes分$remainder秒';
 }

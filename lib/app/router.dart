@@ -5,6 +5,7 @@ import 'package:chocolog/features/home/presentation/home_screen.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:chocolog/features/workout/presentation/strength_entry_screen.dart';
+import 'package:chocolog/features/workout/presentation/cardio_timer_screen.dart';
 import 'package:chocolog/features/workout/presentation/studio_selection_screen.dart';
 import 'package:chocolog/features/workout/presentation/workout_session_screens.dart';
 import 'package:flutter/material.dart';
@@ -105,6 +106,11 @@ GoRouter createAppRouter(
       builder: (context, state) => StrengthEntryScreen(
         equipmentId: state.pathParameters['equipmentId']!,
       ),
+    ),
+    GoRoute(
+      path: '/workout/cardio/:equipmentId',
+      builder: (context, state) =>
+          CardioTimerScreen(equipmentId: state.pathParameters['equipmentId']!),
     ),
     GoRoute(
       path: '/workout/session',

@@ -222,7 +222,7 @@ class _PreviousWorkoutCard extends StatelessWidget {
           children: [
             Text(
               '${startedAt.month}月${startedAt.day}日・'
-              '${summary.exercises.length}種目・${summary.totalSetCount}セット',
+              '${_summaryLabel(summary)}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 10),
@@ -274,4 +274,14 @@ String _progressMessage(int count, int target) {
   if (count >= target) return '今週の目標を達成しました！';
   if (count == 0) return '最初のトレーニングを記録しましょう';
   return 'あと${target - count}回で今週の目標達成です';
+}
+
+String _summaryLabel(WorkoutSessionSummary summary) {
+  final parts = ['${summary.exercises.length}種目'];
+  if (summary.totalSetCount > 0) parts.add('${summary.totalSetCount}セット');
+  if (summary.totalCardioSeconds > 0) {
+    final minutes = summary.totalCardioSeconds ~/ 60;
+    parts.add(minutes > 0 ? '$minutes分' : '${summary.totalCardioSeconds}秒');
+  }
+  return parts.join('・');
 }

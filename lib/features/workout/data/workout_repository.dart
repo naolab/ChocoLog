@@ -40,16 +40,24 @@ class WorkoutSessionSnapshot {
 
 class WorkoutExerciseSummary {
   const WorkoutExerciseSummary({
+    required this.recordId,
     required this.equipmentId,
     required this.equipmentName,
     required this.recordType,
     required this.sets,
+    required this.durationSeconds,
+    required this.distanceKm,
+    required this.timerStatus,
   });
 
+  final String recordId;
   final String equipmentId;
   final String equipmentName;
   final String recordType;
   final List<ExerciseSetValue> sets;
+  final int? durationSeconds;
+  final double? distanceKm;
+  final String timerStatus;
 }
 
 class WorkoutSessionSummary {
@@ -60,6 +68,47 @@ class WorkoutSessionSummary {
 
   int get totalSetCount =>
       exercises.fold(0, (total, exercise) => total + exercise.sets.length);
+
+  int get totalCardioSeconds => exercises.fold(
+    0,
+    (total, exercise) => total + (exercise.durationSeconds ?? 0),
+  );
+}
+
+class CardioRecordSnapshot {
+  const CardioRecordSnapshot({
+    required this.id,
+    required this.sessionId,
+    required this.equipmentId,
+    required this.startedAt,
+    required this.pausedAt,
+    required this.endedAt,
+    required this.accumulatedPausedSeconds,
+    required this.timerStatus,
+    required this.durationSeconds,
+    required this.distanceKm,
+  });
+
+  final String id;
+  final String sessionId;
+  final String equipmentId;
+  final DateTime? startedAt;
+  final DateTime? pausedAt;
+  final DateTime? endedAt;
+  final int accumulatedPausedSeconds;
+  final String timerStatus;
+  final int? durationSeconds;
+  final double? distanceKm;
+
+  int elapsedSecondsAt(DateTime now) {
+    if (durationSeconds != null) return durationSeconds!;
+    if (startedAt == null) return 0;
+    final anchor = timerStatus == 'paused' ? pausedAt ?? now : now;
+    return max(
+      0,
+      anchor.difference(startedAt!).inSeconds - accumulatedPausedSeconds,
+    );
+  }
 }
 
 class WorkoutRepository {
@@ -251,6 +300,148 @@ class WorkoutRepository {
     return rows.map(_setFromRow).toList(growable: false);
   }
 
+  Future<CardioRecordSnapshot?> getCardioRecord({
+    required String sessionId,
+    required String equipmentId,
+  }) async {
+    final query = _database.select(_database.exerciseRecords)
+      ..where(
+        (row) =>
+            row.workoutSessionId.equals(sessionId) &
+            row.equipmentId.equals(equipmentId) &
+            row.recordType.equals('cardio'),
+      )
+      ..orderBy([(row) => OrderingTerm.desc(row.sortOrder)])
+      ..limit(1);
+    final row = await query.getSingleOrNull();
+    return row == null ? null : _cardioFromRow(row);
+  }
+
+  Future<CardioRecordSnapshot> startCardio({
+    required String sessionId,
+    required String equipmentId,
+  }) async {
+    final existing = await getCardioRecord(
+      sessionId: sessionId,
+      equipmentId: equipmentId,
+    );
+    if (existing != null) return existing;
+    return _database.transaction(() async {
+      final session = await (_database.select(
+        _database.workoutSessions,
+      )..where((row) => row.id.equals(sessionId))).getSingleOrNull();
+      if (session == null || session.status != 'draft') {
+        throw StateError('進行中のセッションが見つかりません');
+      }
+      final equipment = await (_database.select(
+        _database.equipment,
+      )..where((row) => row.id.equals(equipmentId))).getSingleOrNull();
+      if (equipment == null || equipment.metricType != 'cardio') {
+        throw ArgumentError.value(equipmentId, 'equipmentId', '有酸素器具ではありません');
+      }
+      final latestRecord =
+          await (_database.select(_database.exerciseRecords)
+                ..where((row) => row.workoutSessionId.equals(sessionId))
+                ..orderBy([(row) => OrderingTerm.desc(row.sortOrder)])
+                ..limit(1))
+              .getSingleOrNull();
+      final now = _now();
+      final row = ExerciseRecordsCompanion.insert(
+        id: _idGenerator(),
+        workoutSessionId: sessionId,
+        equipmentId: equipmentId,
+        recordType: 'cardio',
+        startedAt: Value(now),
+        timerStatus: const Value('running'),
+        sortOrder: Value((latestRecord?.sortOrder ?? -1) + 1),
+        createdAt: Value(now),
+        updatedAt: Value(now),
+      );
+      await _database.into(_database.exerciseRecords).insert(row);
+      return (await getCardioRecord(
+        sessionId: sessionId,
+        equipmentId: equipmentId,
+      ))!;
+    });
+  }
+
+  Future<CardioRecordSnapshot> pauseCardio(String recordId) async {
+    final row = await _activeCardioRow(recordId);
+    if (row.timerStatus != 'running') return _cardioFromRow(row);
+    final now = _now();
+    await (_database.update(
+      _database.exerciseRecords,
+    )..where((item) => item.id.equals(recordId))).write(
+      ExerciseRecordsCompanion(
+        pausedAt: Value(now),
+        timerStatus: const Value('paused'),
+        updatedAt: Value(now),
+      ),
+    );
+    return _cardioFromRow(
+      await (_database.select(
+        _database.exerciseRecords,
+      )..where((item) => item.id.equals(recordId))).getSingle(),
+    );
+  }
+
+  Future<CardioRecordSnapshot> resumeCardio(String recordId) async {
+    final row = await _activeCardioRow(recordId);
+    if (row.timerStatus != 'paused' || row.pausedAt == null) {
+      return _cardioFromRow(row);
+    }
+    final now = _now();
+    final pausedSeconds = now.difference(row.pausedAt!).inSeconds;
+    await (_database.update(
+      _database.exerciseRecords,
+    )..where((item) => item.id.equals(recordId))).write(
+      ExerciseRecordsCompanion(
+        pausedAt: const Value(null),
+        accumulatedPausedSeconds: Value(
+          row.accumulatedPausedSeconds + max(0, pausedSeconds),
+        ),
+        timerStatus: const Value('running'),
+        updatedAt: Value(now),
+      ),
+    );
+    return _cardioFromRow(
+      await (_database.select(
+        _database.exerciseRecords,
+      )..where((item) => item.id.equals(recordId))).getSingle(),
+    );
+  }
+
+  Future<CardioRecordSnapshot> finishCardio({
+    required String recordId,
+    double? distanceKm,
+  }) async {
+    if (distanceKm != null && distanceKm < 0) {
+      throw ArgumentError.value(distanceKm, 'distanceKm', '0以上で入力してください');
+    }
+    final row = await _activeCardioRow(recordId);
+    final now = _now();
+    final snapshot = _cardioFromRow(row);
+    final durationSeconds = snapshot.elapsedSecondsAt(now);
+    if (durationSeconds <= 0) throw StateError('1秒以上計測してください');
+    await (_database.update(
+      _database.exerciseRecords,
+    )..where((item) => item.id.equals(recordId))).write(
+      ExerciseRecordsCompanion(
+        endedAt: Value(now),
+        pausedAt: const Value(null),
+        timerStatus: const Value('completed'),
+        durationSeconds: Value(durationSeconds),
+        distanceKm: Value(distanceKm),
+        updatedAt: Value(now),
+      ),
+    );
+    return _cardioFromRow(
+      await (_database.select(
+        _database.exerciseRecords,
+      )..where((item) => item.id.equals(recordId))).getSingle(),
+    );
+  }
+
   Future<WorkoutSessionSummary> getSessionSummary(String sessionId) async {
     final session = await (_database.select(
       _database.workoutSessions,
@@ -283,10 +474,14 @@ class WorkoutRepository {
       final setRows = await setsQuery.get();
       exercises.add(
         WorkoutExerciseSummary(
+          recordId: record.id,
           equipmentId: equipment.id,
           equipmentName: equipment.name,
           recordType: record.recordType,
           sets: setRows.map(_setFromRow).toList(growable: false),
+          durationSeconds: record.durationSeconds,
+          distanceKm: record.distanceKm,
+          timerStatus: record.timerStatus,
         ),
       );
     }
@@ -440,6 +635,18 @@ class WorkoutRepository {
               .map((row) => row.read(countExpression) ?? 0)
               .getSingle();
       if (recordCount == 0) throw StateError('記録がないセッションは完了できません');
+      final unfinishedCardioCount =
+          await (_database.select(_database.exerciseRecords)..where(
+                (row) =>
+                    row.workoutSessionId.equals(sessionId) &
+                    row.recordType.equals('cardio') &
+                    row.timerStatus.isNotValue('completed'),
+              ))
+              .get()
+              .then((rows) => rows.length);
+      if (unfinishedCardioCount > 0) {
+        throw StateError('計測中の有酸素タイマーがあります');
+      }
 
       final endedAt = _now();
       await (_database.update(
@@ -495,4 +702,37 @@ class WorkoutRepository {
     weightKg: row.weightKg,
     reps: row.reps,
   );
+
+  Future<ExerciseRecordRow> _activeCardioRow(String recordId) async {
+    final query =
+        _database.select(_database.exerciseRecords).join([
+          innerJoin(
+            _database.workoutSessions,
+            _database.workoutSessions.id.equalsExp(
+              _database.exerciseRecords.workoutSessionId,
+            ),
+          ),
+        ])..where(
+          _database.exerciseRecords.id.equals(recordId) &
+              _database.exerciseRecords.recordType.equals('cardio') &
+              _database.workoutSessions.status.equals('draft'),
+        );
+    final result = await query.getSingleOrNull();
+    if (result == null) throw StateError('計測中の有酸素記録が見つかりません');
+    return result.readTable(_database.exerciseRecords);
+  }
+
+  static CardioRecordSnapshot _cardioFromRow(ExerciseRecordRow row) =>
+      CardioRecordSnapshot(
+        id: row.id,
+        sessionId: row.workoutSessionId,
+        equipmentId: row.equipmentId,
+        startedAt: row.startedAt,
+        pausedAt: row.pausedAt,
+        endedAt: row.endedAt,
+        accumulatedPausedSeconds: row.accumulatedPausedSeconds,
+        timerStatus: row.timerStatus,
+        durationSeconds: row.durationSeconds,
+        distanceKm: row.distanceKm,
+      );
 }

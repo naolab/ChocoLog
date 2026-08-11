@@ -168,4 +168,78 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
   });
+
+  testWidgets('有酸素タイマーを一時停止して完了できる', (tester) async {
+    SharedPreferences.setMockInitialValues({'onboarding.completed': true});
+    final preferences = await OnboardingPreferences.load();
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await EquipmentRepository(database).seedDefaults();
+    var current = DateTime.now().toUtc();
+    var id = 0;
+    final repository = WorkoutRepository(
+      database,
+      idGenerator: () => 'timer-${id++}',
+      now: () => current,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(database),
+          workoutRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: ChocoLogApp(onboardingPreferences: preferences),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('トレーニングを始める'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('店舗を選ばずに続ける'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('トレッドミル'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('トレッドミル'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('開始前'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '1.2');
+    await tester.tap(find.text('タイマーを開始'));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('計測中'), findsOneWidget);
+
+    current = current.add(const Duration(seconds: 90));
+    await tester.tap(find.text('一時停止'));
+    await tester.pumpAndSettle();
+    expect(find.text('一時停止中'), findsOneWidget);
+
+    current = current.add(const Duration(seconds: 30));
+    await tester.tap(find.text('再開'));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    current = current.add(const Duration(seconds: 30));
+    await tester.tap(find.text('この器具を終了'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日の記録'), findsOneWidget);
+    expect(find.text('トレッドミル'), findsOneWidget);
+    expect(find.text('2分・1.2km'), findsOneWidget);
+    await tester.tap(find.text('トレーニングを終了'));
+    await tester.pumpAndSettle();
+    expect(find.text('1種目・2分'), findsOneWidget);
+    await tester.tap(find.text('保存して完了'));
+    await tester.pumpAndSettle();
+    expect(find.text('トレーニング完了！'), findsOneWidget);
+    expect(await repository.getActiveSession(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
 }
