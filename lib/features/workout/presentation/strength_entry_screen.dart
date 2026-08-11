@@ -5,17 +5,18 @@ import 'package:chocolog/features/workout/presentation/workout_flow_controller.d
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 class StrengthEntryScreen extends ConsumerStatefulWidget {
   const StrengthEntryScreen({
     super.key,
     required this.equipmentId,
     this.returnToHome = false,
+    this.studioId,
   });
 
   final String equipmentId;
   final bool returnToHome;
+  final String? studioId;
 
   @override
   ConsumerState<StrengthEntryScreen> createState() =>
@@ -87,15 +88,7 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_equipment?.name ?? '記録'),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _finish,
-            child: const Text('完了'),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(_equipment?.name ?? '記録')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
@@ -317,7 +310,11 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
     try {
       final saved = await ref
           .read(workoutFlowControllerProvider.notifier)
-          .addSets(equipmentId: widget.equipmentId, sets: sets);
+          .addSets(
+            equipmentId: widget.equipmentId,
+            sets: sets,
+            studioId: widget.studioId,
+          );
       if (!mounted) return;
       setState(() {
         _saved = saved;
@@ -327,27 +324,6 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
       if (!mounted) return;
       setState(() => _saving = false);
       _showError('セットを保存できませんでした');
-    }
-  }
-
-  Future<void> _finish() async {
-    if (!widget.returnToHome) {
-      context.go('/workout/session');
-      return;
-    }
-    setState(() => _saving = true);
-    try {
-      final summary = await ref
-          .read(workoutFlowControllerProvider.notifier)
-          .summary();
-      if (summary.exercises.isNotEmpty) {
-        await ref.read(workoutFlowControllerProvider.notifier).complete();
-      }
-      if (mounted) context.go('/home');
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      _showError('記録を保存できませんでした');
     }
   }
 

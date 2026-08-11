@@ -160,18 +160,11 @@ void main() {
     await tester.tap(find.text('このメニューを複製'));
     await tester.pumpAndSettle();
 
-    expect(find.text('今日の記録'), findsOneWidget);
-    expect(find.textContaining('20kg × 15回'), findsOneWidget);
-    expect(find.textContaining('25kg × 12回'), findsOneWidget);
+    expect(find.text('ChocoLog'), findsOneWidget);
+    expect(find.textContaining('チェストプレス'), findsWidgets);
     final active = await repository.getActiveSession();
-    expect(active, isNotNull);
-    expect(
-      await repository.getSessionSets(
-        sessionId: active!.id,
-        equipmentId: 'chest-press',
-      ),
-      hasLength(2),
-    );
+    expect(active, isNull);
+    expect(await repository.getCompletedSessionSummaries(), hasLength(2));
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

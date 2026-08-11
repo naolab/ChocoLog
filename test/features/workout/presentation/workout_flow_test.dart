@@ -48,6 +48,8 @@ void main() {
     expect(find.text('前回の3セットをコピー'), findsOneWidget);
     await tester.tap(find.text('このセットを追加'));
     await tester.pumpAndSettle();
+    expect(await repository.getActiveSession(), isNull);
+    expect(await repository.getCompletedSessionSummaries(), hasLength(2));
     await tester.tap(find.text('前回の3セットをコピー'));
     await tester.pumpAndSettle();
 
@@ -62,9 +64,9 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '');
     await tester.tap(find.text('このセットを追加'));
     await tester.pumpAndSettle();
-    final activeSession = await repository.getActiveSession();
+    final todaySession = await repository.getTodaySession();
     final currentSets = await repository.getSessionSets(
-      sessionId: activeSession!.id,
+      sessionId: todaySession!.id,
       equipmentId: 'chest-press',
     );
     expect(currentSets.last.weightKg, isNull);
@@ -81,13 +83,14 @@ void main() {
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
     final editedSets = await repository.getSessionSets(
-      sessionId: activeSession.id,
+      sessionId: todaySession.id,
       equipmentId: 'chest-press',
     );
     expect(editedSets.last.weightKg, 30);
     expect(editedSets.last.reps, 10);
 
-    await tester.tap(find.text('完了'));
+    expect(await repository.getActiveSession(), isNull);
+    await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('アブベンチ'));
     await tester.pumpAndSettle();
@@ -102,7 +105,8 @@ void main() {
     expect(find.text('自重 × 15回'), findsNWidgets(3));
     expect(await database.select(database.exerciseSets).get(), hasLength(11));
 
-    await tester.tap(find.text('完了'));
+    expect(await repository.getActiveSession(), isNull);
+    await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView).last, const Offset(0, -1800));
     await tester.pumpAndSettle();
