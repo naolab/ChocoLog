@@ -1,6 +1,7 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/features/equipment/presentation/equipment_selection_screen.dart';
 import 'package:chocolog/features/history/presentation/history_screens.dart';
+import 'package:chocolog/features/home/presentation/home_screen.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:chocolog/features/workout/presentation/strength_entry_screen.dart';
@@ -39,7 +40,7 @@ GoRouter createAppRouter(
             GoRoute(
               path: '/home',
               builder: (context, state) =>
-                  _HomeTab(weeklyTarget: onboardingPreferences.weeklyTarget),
+                  HomeScreen(weeklyTarget: onboardingPreferences.weeklyTarget),
             ),
           ],
         ),
@@ -160,66 +161,6 @@ class _AppShell extends StatelessWidget {
             label: '設定',
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HomeTab extends StatelessWidget {
-  const _HomeTab({required this.weeklyTarget});
-
-  final int weeklyTarget;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('ChocoLog')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          children: [
-            Text('こんにちは', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 20),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '今週 0 / $weeklyTarget回',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    const LinearProgressIndicator(value: 0),
-                    const SizedBox(height: 10),
-                    const Text(
-                      '最初のトレーニングを記録しましょう',
-                      style: TextStyle(color: ChocoLogColors.muted),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () => context.push('/workout/studio'),
-              child: const Text('トレーニングを始める'),
-            ),
-            const SizedBox(height: 28),
-            Text('前回のメニュー', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text(
-                  'まだ記録がありません',
-                  style: TextStyle(color: ChocoLogColors.muted),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

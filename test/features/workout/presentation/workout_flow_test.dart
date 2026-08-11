@@ -95,8 +95,8 @@ void main() {
 
     await tester.tap(find.text('完了'));
     await tester.pumpAndSettle();
-    expect(find.text('チェストプレス'), findsOneWidget);
-    expect(find.text('アブベンチ'), findsOneWidget);
+    expect(find.textContaining('チェストプレス'), findsOneWidget);
+    expect(find.textContaining('アブベンチ'), findsOneWidget);
     await tester.tap(find.text('トレーニングを終了'));
     await tester.pumpAndSettle();
 
@@ -110,6 +110,15 @@ void main() {
     await tester.tap(find.text('ホームへ戻る'));
     await tester.pumpAndSettle();
     expect(find.text('トレーニングを始める'), findsOneWidget);
+    expect(find.text('今週 2 / 2回'), findsOneWidget);
+    final homeHistory = await repository.getCompletedSessionSummaries();
+    expect(
+      homeHistory.first.exercises.map((exercise) => exercise.equipmentName),
+      ['チェストプレス', 'アブベンチ'],
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -350));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('チェストプレス'), findsOneWidget);
 
     await tester.tap(find.text('履歴'));
     await tester.pumpAndSettle();
@@ -125,6 +134,17 @@ void main() {
     expect(find.text('アブベンチ'), findsOneWidget);
     expect(find.textContaining('重量未設定 × 15回'), findsOneWidget);
     expect(find.textContaining('自重 × 15回'), findsNWidgets(3));
+
+    await tester.drag(find.byType(ListView).last, const Offset(0, -900));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('この記録を削除'));
+    await tester.pumpAndSettle();
+    expect(find.text('記録を削除しますか？'), findsOneWidget);
+    await tester.tap(find.text('削除する'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('トレーニング詳細'), findsNothing);
+    expect(await repository.getCompletedSessionSummaries(), hasLength(1));
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

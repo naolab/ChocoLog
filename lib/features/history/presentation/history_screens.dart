@@ -1,6 +1,7 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
+import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -92,7 +93,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   )
                 else
                   for (final summary in selectedSessions) ...[
-                    _SessionCard(summary: summary),
+                    _SessionCard(summary: summary, onChanged: _reload),
                     const SizedBox(height: 10),
                   ],
               ],
@@ -109,7 +110,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Future<void> _reload() async {
     final future = _loadHistory();
-    setState(() => _history = future);
+    setState(() {
+      _history = future;
+    });
     try {
       await future;
     } catch (_) {
@@ -126,19 +129,34 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 }
 
-class HistoryDetailScreen extends ConsumerWidget {
+class HistoryDetailScreen extends ConsumerStatefulWidget {
   const HistoryDetailScreen({super.key, required this.sessionId});
 
   final String sessionId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HistoryDetailScreen> createState() =>
+      _HistoryDetailScreenState();
+}
+
+class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
+  late Future<WorkoutSessionSummary> _summary;
+  var _processing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _summary = ref
+        .read(workoutRepositoryProvider)
+        .getSessionSummary(widget.sessionId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('トレーニング詳細')),
       body: FutureBuilder<WorkoutSessionSummary>(
-        future: ref
-            .read(workoutRepositoryProvider)
-            .getSessionSummary(sessionId),
+        future: _summary,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
@@ -187,11 +205,85 @@ class HistoryDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
               ],
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _processing ? null : _duplicate,
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('このメニューを複製'),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _processing ? null : _confirmDelete,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('この記録を削除'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+              ),
             ],
           );
         },
       ),
     );
+  }
+
+  Future<void> _duplicate() async {
+    final active = await ref.read(workoutRepositoryProvider).getActiveSession();
+    if (active != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('進行中のトレーニングを先に完了してください')));
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _processing = true);
+    try {
+      await ref
+          .read(workoutFlowControllerProvider.notifier)
+          .duplicate(widget.sessionId);
+      if (mounted) context.go('/workout/session');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('メニューを複製できませんでした')));
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('記録を削除しますか？'),
+        content: const Text('削除した記録は元に戻せません。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('削除する'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _processing = true);
+    try {
+      await ref
+          .read(workoutRepositoryProvider)
+          .deleteCompletedSession(widget.sessionId);
+      if (mounted) context.pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('記録を削除できませんでした')));
+    }
   }
 }
 
@@ -311,9 +403,10 @@ class _MonthCalendar extends StatelessWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.summary});
+  const _SessionCard({required this.summary, required this.onChanged});
 
   final WorkoutSessionSummary summary;
+  final Future<void> Function() onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -323,7 +416,12 @@ class _SessionCard extends StatelessWidget {
         .join('・');
     return Card(
       child: ListTile(
-        onTap: () => context.push('/history/${summary.session.id}'),
+        onTap: () async {
+          final changed = await context.push<bool>(
+            '/history/${summary.session.id}',
+          );
+          if (changed == true) await onChanged();
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         title: Text(
           '${_twoDigits(startedAt.hour)}:${_twoDigits(startedAt.minute)}　'

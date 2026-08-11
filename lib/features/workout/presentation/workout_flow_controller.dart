@@ -83,4 +83,18 @@ class WorkoutFlowController
     state = const AsyncData(null);
     return session.id;
   }
+
+  Future<WorkoutSessionSnapshot> duplicate(String sourceSessionId) async {
+    state = const AsyncLoading();
+    try {
+      final session = await _repository.duplicateCompletedSession(
+        sourceSessionId,
+      );
+      state = AsyncData(session);
+      return session;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
 }
