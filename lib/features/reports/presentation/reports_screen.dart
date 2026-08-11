@@ -1,12 +1,16 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/features/history/presentation/history_screens.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
+import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 enum _ReportPeriod { week, month }
+
+enum _ReportSection { history, analysis }
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key, required this.preferences});
@@ -19,6 +23,7 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   late Future<List<WorkoutSessionSummary>> _history;
+  var _section = _ReportSection.history;
   var _period = _ReportPeriod.week;
 
   @override
@@ -29,74 +34,111 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(workoutFlowControllerProvider, (previous, next) {
+      if (previous != next && !next.isLoading) _reload();
+    });
     return Scaffold(
       appBar: AppBar(title: const Text('レポート')),
-      body: FutureBuilder<List<WorkoutSessionSummary>>(
-        future: _history,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return _ReportError(onRetry: _reload);
-          }
-          final report = _ReportData.create(
-            history: snapshot.requireData,
-            period: _period,
-          );
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-              children: [
-                SegmentedButton<_ReportPeriod>(
-                  segments: const [
-                    ButtonSegment(value: _ReportPeriod.week, label: Text('週')),
-                    ButtonSegment(value: _ReportPeriod.month, label: Text('月')),
-                  ],
-                  selected: {_period},
-                  onSelectionChanged: (selection) {
-                    setState(() => _period = selection.single);
-                  },
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  report.periodLabel,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: ChocoLogColors.muted),
-                ),
-                const SizedBox(height: 14),
-                if (report.sessions.isEmpty)
-                  _EmptyReport(onStart: () => context.push('/workout/studio'))
-                else ...[
-                  ListenableBuilder(
-                    listenable: widget.preferences,
-                    builder: (context, _) => _SummaryCard(
-                      report: report,
-                      weeklyTarget: widget.preferences.weeklyTarget,
-                    ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<_ReportSection>(
+                segments: const [
+                  ButtonSegment(
+                    value: _ReportSection.history,
+                    icon: Icon(Icons.calendar_month_outlined),
+                    label: Text('履歴'),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'よく使った器具',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  ButtonSegment(
+                    value: _ReportSection.analysis,
+                    icon: Icon(Icons.bar_chart_outlined),
+                    label: Text('分析'),
                   ),
-                  const SizedBox(height: 10),
-                  for (final (index, equipment) in report.equipment.indexed)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _EquipmentCard(
-                        rank: index + 1,
-                        equipment: equipment,
-                      ),
-                    ),
                 ],
-              ],
+                selected: {_section},
+                onSelectionChanged: (selection) {
+                  setState(() => _section = selection.single);
+                },
+              ),
             ),
-          );
-        },
+          ),
+          Expanded(
+            child: IndexedStack(
+              index: _section.index,
+              children: [const HistoryScreen(embedded: true), _buildAnalysis()],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildAnalysis() {
+    return FutureBuilder<List<WorkoutSessionSummary>>(
+      future: _history,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _ReportError(onRetry: _reload);
+        }
+        final report = _ReportData.create(
+          history: snapshot.requireData,
+          period: _period,
+        );
+        return RefreshIndicator(
+          onRefresh: _reload,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+            children: [
+              SegmentedButton<_ReportPeriod>(
+                segments: const [
+                  ButtonSegment(value: _ReportPeriod.week, label: Text('週')),
+                  ButtonSegment(value: _ReportPeriod.month, label: Text('月')),
+                ],
+                selected: {_period},
+                onSelectionChanged: (selection) {
+                  setState(() => _period = selection.single);
+                },
+              ),
+              const SizedBox(height: 18),
+              Text(
+                report.periodLabel,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: ChocoLogColors.muted),
+              ),
+              const SizedBox(height: 14),
+              if (report.sessions.isEmpty)
+                _EmptyReport(onStart: () => context.push('/workout/studio'))
+              else ...[
+                ListenableBuilder(
+                  listenable: widget.preferences,
+                  builder: (context, _) => _SummaryCard(
+                    report: report,
+                    weeklyTarget: widget.preferences.weeklyTarget,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text('よく使った器具', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 10),
+                for (final (index, equipment) in report.equipment.indexed)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _EquipmentCard(
+                      rank: index + 1,
+                      equipment: equipment,
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -105,7 +147,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   Future<void> _reload() async {
     final history = _load();
-    setState(() => _history = history);
+    setState(() {
+      _history = history;
+    });
     await history;
   }
 }

@@ -45,7 +45,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('トレーニングを始める'), findsOneWidget);
-    expect(find.text('今週 0 / 3回'), findsOneWidget);
+    expect(find.text('今日のトレーニング'), findsOneWidget);
+    expect(find.text('完了したトレーニングはまだありません'), findsOneWidget);
     expect(preferences.isCompleted, isTrue);
     expect(preferences.weeklyTarget, 3);
     expect(preferences.reminderEnabled, isTrue);
@@ -54,7 +55,7 @@ void main() {
     expect(preferences.reminderMinute, 0);
   });
 
-  testWidgets('完了済みならホームから通常4タブへ移動できる', (tester) async {
+  testWidgets('完了済みならホームから通常3タブへ移動できる', (tester) async {
     SharedPreferences.setMockInitialValues({'onboarding.completed': true});
     final preferences = await OnboardingPreferences.load();
     final database = AppDatabase(NativeDatabase.memory());
@@ -79,11 +80,10 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('履歴'));
+    await tester.tap(find.text('レポート'));
     await tester.pumpAndSettle();
     expect(find.text('トレーニングの記録がここに表示されます'), findsOneWidget);
-
-    await tester.tap(find.text('レポート'));
+    await tester.tap(find.text('分析'));
     await tester.pumpAndSettle();
     expect(find.text('この期間の記録はありません'), findsOneWidget);
 
@@ -100,10 +100,10 @@ void main() {
 
     await tester.tap(find.text('ホーム'));
     await tester.pumpAndSettle();
-    expect(find.text('今週 0 / 3回'), findsOneWidget);
+    expect(find.text('今日のトレーニング'), findsOneWidget);
   });
 
-  testWidgets('ホームの前回メニューから同じセットを開始できる', (tester) async {
+  testWidgets('レポートの履歴から同じセットを開始できる', (tester) async {
     SharedPreferences.setMockInitialValues({'onboarding.completed': true});
     final preferences = await OnboardingPreferences.load();
     final database = AppDatabase(NativeDatabase.memory());
@@ -129,11 +129,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('今週 1 / 2回'), findsOneWidget);
-    await tester.drag(find.byType(ListView).last, const Offset(0, -350));
-    await tester.pumpAndSettle();
+    expect(find.text('今日の記録'), findsOneWidget);
     expect(find.textContaining('チェストプレス'), findsOneWidget);
-    await tester.tap(find.text('このメニューでもう一度'));
+    await tester.tap(find.text('レポート'));
+    await tester.pumpAndSettle();
+    final sessionTitle = find.textContaining('1種目・2セット');
+    await tester.scrollUntilVisible(
+      sessionTitle,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    final sessionTile = find.ancestor(
+      of: sessionTitle,
+      matching: find.byType(ListTile),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(sessionTile);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('このメニューを複製'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('このメニューを複製'));
     await tester.pumpAndSettle();
 
     expect(find.text('今日の記録'), findsOneWidget);

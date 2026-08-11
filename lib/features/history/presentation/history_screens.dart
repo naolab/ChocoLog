@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
-  const HistoryScreen({super.key});
+  const HistoryScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
@@ -26,81 +28,84 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(workoutFlowControllerProvider, (previous, next) {
+      if (previous != next && !next.isLoading) _reload();
+    });
+    final body = FutureBuilder<List<WorkoutSessionSummary>>(
+      future: _history,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _HistoryError(onRetry: _reload);
+        }
+        final sessions = snapshot.requireData;
+        if (sessions.isEmpty) {
+          return _EmptyHistory(onStart: () => context.push('/workout/studio'));
+        }
+
+        final latestDate = _localDate(sessions.first.session.startedAt);
+        final visibleMonth =
+            _visibleMonth ?? DateTime(latestDate.year, latestDate.month);
+        final selectedDate = _selectedDate ?? latestDate;
+        final selectedSessions = sessions
+            .where(
+              (summary) => _isSameDate(
+                _localDate(summary.session.startedAt),
+                selectedDate,
+              ),
+            )
+            .toList();
+
+        return RefreshIndicator(
+          onRefresh: _reload,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            children: [
+              _MonthCalendar(
+                month: visibleMonth,
+                selectedDate: selectedDate,
+                recordedDates: {
+                  for (final summary in sessions)
+                    _localDate(summary.session.startedAt),
+                },
+                onPreviousMonth: () => _changeMonth(-1, visibleMonth),
+                onNextMonth: () => _changeMonth(1, visibleMonth),
+                onDateSelected: (date) {
+                  setState(() => _selectedDate = date);
+                },
+              ),
+              const SizedBox(height: 24),
+              Text(
+                '${selectedDate.month}月${selectedDate.day}日の記録',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              if (selectedSessions.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 28),
+                  child: Text(
+                    'この日の記録はありません',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: ChocoLogColors.muted),
+                  ),
+                )
+              else
+                for (final summary in selectedSessions) ...[
+                  _SessionCard(summary: summary, onChanged: _reload),
+                  const SizedBox(height: 10),
+                ],
+            ],
+          ),
+        );
+      },
+    );
+    if (widget.embedded) return body;
     return Scaffold(
       appBar: AppBar(title: const Text('履歴')),
-      body: FutureBuilder<List<WorkoutSessionSummary>>(
-        future: _history,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return _HistoryError(onRetry: _reload);
-          }
-          final sessions = snapshot.requireData;
-          if (sessions.isEmpty) {
-            return _EmptyHistory(
-              onStart: () => context.push('/workout/studio'),
-            );
-          }
-
-          final latestDate = _localDate(sessions.first.session.startedAt);
-          final visibleMonth =
-              _visibleMonth ?? DateTime(latestDate.year, latestDate.month);
-          final selectedDate = _selectedDate ?? latestDate;
-          final selectedSessions = sessions
-              .where(
-                (summary) => _isSameDate(
-                  _localDate(summary.session.startedAt),
-                  selectedDate,
-                ),
-              )
-              .toList();
-
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-              children: [
-                _MonthCalendar(
-                  month: visibleMonth,
-                  selectedDate: selectedDate,
-                  recordedDates: {
-                    for (final summary in sessions)
-                      _localDate(summary.session.startedAt),
-                  },
-                  onPreviousMonth: () => _changeMonth(-1, visibleMonth),
-                  onNextMonth: () => _changeMonth(1, visibleMonth),
-                  onDateSelected: (date) {
-                    setState(() => _selectedDate = date);
-                  },
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  '${selectedDate.month}月${selectedDate.day}日の記録',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                if (selectedSessions.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 28),
-                    child: Text(
-                      'この日の記録はありません',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: ChocoLogColors.muted),
-                    ),
-                  )
-                else
-                  for (final summary in selectedSessions) ...[
-                    _SessionCard(summary: summary, onChanged: _reload),
-                    const SizedBox(height: 10),
-                  ],
-              ],
-            ),
-          );
-        },
-      ),
+      body: body,
     );
   }
 
@@ -430,7 +435,7 @@ class _SessionCard extends StatelessWidget {
       child: ListTile(
         onTap: () async {
           final changed = await context.push<bool>(
-            '/history/${summary.session.id}',
+            '/reports/history/${summary.session.id}',
           );
           if (changed == true) await onChanged();
         },

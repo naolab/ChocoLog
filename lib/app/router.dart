@@ -60,24 +60,7 @@ GoRouter createAppRouter(
           routes: [
             GoRoute(
               path: '/home',
-              builder: (context, state) =>
-                  HomeScreen(preferences: onboardingPreferences),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/history',
-              builder: (context, state) => const HistoryScreen(),
-              routes: [
-                GoRoute(
-                  path: ':sessionId',
-                  builder: (context, state) => HistoryDetailScreen(
-                    sessionId: state.pathParameters['sessionId']!,
-                  ),
-                ),
-              ],
+              builder: (context, state) => const HomeScreen(),
             ),
           ],
         ),
@@ -87,6 +70,14 @@ GoRouter createAppRouter(
               path: '/reports',
               builder: (context, state) =>
                   ReportsScreen(preferences: onboardingPreferences),
+              routes: [
+                GoRoute(
+                  path: 'history/:sessionId',
+                  builder: (context, state) => HistoryDetailScreen(
+                    sessionId: state.pathParameters['sessionId']!,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -100,6 +91,12 @@ GoRouter createAppRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(path: '/history', redirect: (context, state) => '/reports'),
+    GoRoute(
+      path: '/history/:sessionId',
+      redirect: (context, state) =>
+          '/reports/history/${state.pathParameters['sessionId']}',
     ),
     GoRoute(
       path: '/workout/studio',
@@ -172,11 +169,6 @@ class _AppShell extends StatelessWidget {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: 'ホーム',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
-            label: '履歴',
           ),
           NavigationDestination(
             icon: Icon(Icons.bar_chart_outlined),
