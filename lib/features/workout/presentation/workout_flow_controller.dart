@@ -21,6 +21,7 @@ class WorkoutFlowController
     try {
       final session =
           await _repository.getActiveSession() ??
+          await _repository.reopenTodaySession(studioId: studioId) ??
           await _repository.startSession(studioId: studioId);
       state = AsyncData(session);
       return session;

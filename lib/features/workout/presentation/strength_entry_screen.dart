@@ -91,11 +91,7 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
         title: Text(_equipment?.name ?? '記録'),
         actions: [
           TextButton(
-            onPressed: _saving
-                ? null
-                : () => context.go(
-                    widget.returnToHome ? '/home' : '/workout/session',
-                  ),
+            onPressed: _saving ? null : _finish,
             child: const Text('完了'),
           ),
         ],
@@ -331,6 +327,27 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
       if (!mounted) return;
       setState(() => _saving = false);
       _showError('セットを保存できませんでした');
+    }
+  }
+
+  Future<void> _finish() async {
+    if (!widget.returnToHome) {
+      context.go('/workout/session');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final summary = await ref
+          .read(workoutFlowControllerProvider.notifier)
+          .summary();
+      if (summary.exercises.isNotEmpty) {
+        await ref.read(workoutFlowControllerProvider.notifier).complete();
+      }
+      if (mounted) context.go('/home');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showError('記録を保存できませんでした');
     }
   }
 

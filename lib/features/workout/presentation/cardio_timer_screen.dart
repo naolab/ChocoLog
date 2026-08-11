@@ -54,10 +54,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
         title: Text(_equipment?.name ?? '有酸素運動'),
         actions: [
           if (record?.timerStatus == 'completed')
-            TextButton(
-              onPressed: () => context.go('/workout/session'),
-              child: const Text('完了'),
-            ),
+            TextButton(onPressed: _finishNavigation, child: const Text('完了')),
         ],
       ),
       body: _loading
@@ -133,8 +130,8 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
                     ),
                   ] else
                     FilledButton(
-                      onPressed: () => context.go('/workout/session'),
-                      child: const Text('今日の記録へ戻る'),
+                      onPressed: _finishNavigation,
+                      child: Text(widget.returnToHome ? 'ホームへ戻る' : '今日の記録へ戻る'),
                     ),
                 ],
               ),
@@ -156,10 +153,14 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
       final record = await ref
           .read(workoutFlowControllerProvider.notifier)
           .currentCardio(widget.equipmentId);
+      final editableRecord =
+          widget.returnToHome && record?.timerStatus == 'completed'
+          ? null
+          : record;
       if (!mounted) return;
       setState(() {
         _equipment = equipment;
-        _record = record;
+        _record = editableRecord;
         _loading = false;
         if (record?.distanceKm != null) {
           _distanceController.text = '${record!.distanceKm}';
@@ -214,6 +215,20 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
           .finishCardio(recordId: _record!.id, distanceKm: distance),
     );
     if (mounted && _record?.timerStatus == 'completed') {
+      await _finishNavigation();
+    }
+  }
+
+  Future<void> _finishNavigation() async {
+    if (widget.returnToHome) {
+      try {
+        await ref.read(workoutFlowControllerProvider.notifier).complete();
+      } catch (_) {
+        if (mounted) _showError('記録を保存できませんでした');
+        return;
+      }
+    }
+    if (mounted) {
       context.go(widget.returnToHome ? '/home' : '/workout/session');
     }
   }

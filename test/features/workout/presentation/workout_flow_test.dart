@@ -17,7 +17,8 @@ void main() {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
     await EquipmentRepository(database).seedDefaults();
-    final repository = WorkoutRepository(database);
+    var current = DateTime.now().toUtc().subtract(const Duration(days: 1));
+    final repository = WorkoutRepository(database, now: () => current);
     final previousSession = await repository.startSession();
     await repository.addExerciseSets(
       sessionId: previousSession.id,
@@ -29,10 +30,14 @@ void main() {
       ],
     );
     await repository.completeSession(previousSession.id);
+    current = DateTime.now().toUtc();
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [databaseProvider.overrideWithValue(database)],
+        overrides: [
+          databaseProvider.overrideWithValue(database),
+          workoutRepositoryProvider.overrideWithValue(repository),
+        ],
         child: ChocoLogApp(onboardingPreferences: preferences),
       ),
     );
@@ -103,20 +108,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('チェストプレス'), findsWidgets);
     expect(find.textContaining('アブベンチ'), findsWidgets);
-    await tester.tap(find.text('今日の記録を完了'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('2種目・8セット'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), '今日は調子が良かった');
-    await tester.tap(find.text('保存して完了'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('トレーニング完了！'), findsOneWidget);
-    expect(find.text('2種目・8セット'), findsOneWidget);
+    expect(find.text('今日 5セット・合計70回'), findsOneWidget);
+    expect(find.text('今日 15回 × 3セット'), findsOneWidget);
+    expect(find.text('今日の記録を完了'), findsNothing);
     expect(await repository.getActiveSession(), isNull);
-    await tester.tap(find.text('ホームへ戻る'));
-    await tester.pumpAndSettle();
-    expect(find.text('器具を選んで記録'), findsOneWidget);
     final homeHistory = await repository.getCompletedSessionSummaries();
     expect(
       homeHistory.first.exercises.map((exercise) => exercise.equipmentName),
@@ -147,7 +142,6 @@ void main() {
     expect(find.text('アブベンチ'), findsOneWidget);
     expect(find.textContaining('30kg × 10回'), findsOneWidget);
     expect(find.textContaining('自重 × 15回'), findsNWidgets(3));
-    expect(find.text('今日は調子が良かった'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).last, const Offset(0, -900));
     await tester.pumpAndSettle();
@@ -218,14 +212,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('今日の記録'), findsOneWidget);
     expect(find.text('トレッドミル'), findsWidgets);
-    expect(find.text('2分・1.2km'), findsOneWidget);
-    await tester.tap(find.text('今日の記録を完了'));
-    await tester.pumpAndSettle();
-    expect(find.text('1種目・2分'), findsOneWidget);
-    await tester.tap(find.text('保存して完了'));
-    await tester.pumpAndSettle();
-    expect(find.text('トレーニング完了！'), findsOneWidget);
+    expect(find.textContaining('2分・1.2km'), findsOneWidget);
+    expect(find.text('今日 2分'), findsOneWidget);
+    expect(find.text('今日の記録を完了'), findsNothing);
     expect(await repository.getActiveSession(), isNull);
+    expect(await repository.getCompletedSessionSummaries(), hasLength(1));
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
