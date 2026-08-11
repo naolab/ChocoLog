@@ -1,30 +1,33 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:chocolog/app/app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:chocolog/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('ホームから通常4タブへ移動できる', (tester) async {
+    await tester.pumpWidget(const ChocoLogApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('トレーニングを始める'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.tap(find.text('トレーニングを始める'));
+    await tester.pumpAndSettle();
+    expect(find.text('今回の店舗'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('履歴'));
+    await tester.pumpAndSettle();
+    expect(find.text('トレーニングの記録がここに表示されます'), findsOneWidget);
+
+    await tester.tap(find.text('レポート'));
+    await tester.pumpAndSettle();
+    expect(find.text('記録を続けると週・月の成果を確認できます'), findsOneWidget);
+
+    await tester.tap(find.text('設定'));
+    await tester.pumpAndSettle();
+    expect(find.text('目標回数や通知を設定できます'), findsOneWidget);
   });
 }
