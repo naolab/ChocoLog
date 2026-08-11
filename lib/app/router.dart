@@ -1,6 +1,9 @@
 import 'package:chocolog/app/theme.dart';
+import 'package:chocolog/features/equipment/presentation/equipment_selection_screen.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:chocolog/features/workout/presentation/strength_entry_screen.dart';
+import 'package:chocolog/features/workout/presentation/studio_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -78,7 +81,23 @@ GoRouter createAppRouter(
     ),
     GoRoute(
       path: '/workout/studio',
-      builder: (context, state) => const _WorkoutStartPlaceholder(),
+      builder: (context, state) => const StudioSelectionScreen(),
+    ),
+    GoRoute(
+      path: '/workout/equipment',
+      builder: (context, state) => const EquipmentSelectionScreen(),
+    ),
+    GoRoute(
+      path: '/workout/strength/:equipmentId',
+      builder: (context, state) => StrengthEntryScreen(
+        equipmentId: state.pathParameters['equipmentId']!,
+      ),
+    ),
+    GoRoute(
+      path: '/workout/bodyweight/:equipmentId',
+      builder: (context, state) => StrengthEntryScreen(
+        equipmentId: state.pathParameters['equipmentId']!,
+      ),
     ),
   ],
 );
@@ -183,18 +202,6 @@ class _HomeTab extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _WorkoutStartPlaceholder extends StatelessWidget {
-  const _WorkoutStartPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('今回の店舗')),
-      body: const Center(child: Text('店舗選択は次の工程で実装します')),
     );
   }
 }

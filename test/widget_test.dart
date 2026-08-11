@@ -1,6 +1,7 @@
 import 'package:chocolog/app/app.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,7 +10,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final preferences = await OnboardingPreferences.load();
 
-    await tester.pumpWidget(ChocoLogApp(onboardingPreferences: preferences));
+    await tester.pumpWidget(
+      ProviderScope(child: ChocoLogApp(onboardingPreferences: preferences)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('いつものトレーニングを\nかんたんに記録'), findsOneWidget);
@@ -45,7 +48,9 @@ void main() {
     SharedPreferences.setMockInitialValues({'onboarding.completed': true});
     final preferences = await OnboardingPreferences.load();
 
-    await tester.pumpWidget(ChocoLogApp(onboardingPreferences: preferences));
+    await tester.pumpWidget(
+      ProviderScope(child: ChocoLogApp(onboardingPreferences: preferences)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('トレーニングを始める'), findsOneWidget);
