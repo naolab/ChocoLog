@@ -56,9 +56,12 @@ void main() {
 
     expect(await workoutRepository.getActiveSession(), isNull);
     final previous = await workoutRepository.getPreviousSets('chest-press');
+    final summary = await workoutRepository.getSessionSummary(session.id);
     expect(await database.select(database.exerciseRecords).get(), hasLength(1));
     expect(previous.map((set) => set.weightKg), [20, 20, 25]);
     expect(previous.map((set) => set.reps), [15, 15, 12]);
+    expect(summary.exercises.single.equipmentName, 'チェストプレス');
+    expect(summary.totalSetCount, 3);
   });
 
   test('進行中セッションを複数作成できない', () async {

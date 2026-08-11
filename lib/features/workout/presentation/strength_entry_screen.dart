@@ -5,6 +5,7 @@ import 'package:chocolog/features/workout/presentation/workout_flow_controller.d
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class StrengthEntryScreen extends ConsumerStatefulWidget {
   const StrengthEntryScreen({super.key, required this.equipmentId});
@@ -85,7 +86,7 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
         title: Text(_equipment?.name ?? '記録'),
         actions: [
           TextButton(
-            onPressed: _saving ? null : () => Navigator.of(context).pop(),
+            onPressed: _saving ? null : () => context.go('/workout/session'),
             child: const Text('完了'),
           ),
         ],
