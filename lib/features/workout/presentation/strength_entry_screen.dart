@@ -150,6 +150,21 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(child: Text('${index + 1}')),
                       title: Text(_setLabel(set)),
+                      trailing: PopupMenuButton<String>(
+                        enabled: !_saving && set.id != null,
+                        tooltip: '${index + 1}セット目の操作',
+                        onSelected: (action) {
+                          if (action == 'edit') {
+                            _editSet(set);
+                          } else if (action == 'delete') {
+                            _deleteSet(set);
+                          }
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(value: 'edit', child: Text('編集')),
+                          PopupMenuItem(value: 'delete', child: Text('削除')),
+                        ],
+                      ),
                     ),
                 ],
               ],
@@ -310,6 +325,62 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
     }
   }
 
+  Future<void> _editSet(ExerciseSetValue set) async {
+    final updated = await showDialog<ExerciseSetValue>(
+      context: context,
+      builder: (context) =>
+          _EditSetDialog(set: set, isBodyweight: _isBodyweight),
+    );
+    if (updated == null || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      final saved = await ref
+          .read(workoutFlowControllerProvider.notifier)
+          .updateSet(
+            equipmentId: widget.equipmentId,
+            setId: set.id!,
+            weightKg: updated.weightKg,
+            reps: updated.reps,
+          );
+      if (mounted) setState(() => _saved = saved);
+    } catch (_) {
+      if (mounted) _showError('セットを更新できませんでした');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _deleteSet(ExerciseSetValue set) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('セットを削除しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('削除する'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      final saved = await ref
+          .read(workoutFlowControllerProvider.notifier)
+          .deleteSet(equipmentId: widget.equipmentId, setId: set.id!);
+      if (mounted) setState(() => _saved = saved);
+    } catch (_) {
+      if (mounted) _showError('セットを削除できませんでした');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   void _adjustWeight(int delta) {
     final current = int.tryParse(_weightController.text) ?? 0;
     _weightController.text = '${(current + delta).clamp(0, 999)}';
@@ -336,5 +407,106 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
   String _setLabel(ExerciseSetValue set) {
     if (set.weightKg != null) return '${set.weightKg}kg × ${set.reps}回';
     return _isBodyweight ? '自重 × ${set.reps}回' : '重量未設定 × ${set.reps}回';
+  }
+}
+
+class _EditSetDialog extends StatefulWidget {
+  const _EditSetDialog({required this.set, required this.isBodyweight});
+
+  final ExerciseSetValue set;
+  final bool isBodyweight;
+
+  @override
+  State<_EditSetDialog> createState() => _EditSetDialogState();
+}
+
+class _EditSetDialogState extends State<_EditSetDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _weightController;
+  late final TextEditingController _repsController;
+
+  @override
+  void initState() {
+    super.initState();
+    _weightController = TextEditingController(
+      text: widget.set.weightKg?.toString() ?? '',
+    );
+    _repsController = TextEditingController(text: '${widget.set.reps}');
+  }
+
+  @override
+  void dispose() {
+    _weightController.dispose();
+    _repsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('セットを編集'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!widget.isBodyweight)
+                TextFormField(
+                  controller: _weightController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    labelText: '重量',
+                    suffixText: 'kg',
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return null;
+                    final weight = int.tryParse(value);
+                    return weight != null && weight % 5 == 0
+                        ? null
+                        : '5kg単位で入力してください';
+                  },
+                ),
+              if (!widget.isBodyweight) const SizedBox(height: 12),
+              TextFormField(
+                controller: _repsController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: '回数',
+                  suffixText: '回',
+                ),
+                validator: (value) {
+                  final reps = int.tryParse(value ?? '');
+                  return reps != null && reps > 0 ? null : '1回以上で入力してください';
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('キャンセル'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() != true) return;
+            Navigator.pop(
+              context,
+              ExerciseSetValue(
+                weightKg: widget.isBodyweight || _weightController.text.isEmpty
+                    ? null
+                    : int.parse(_weightController.text),
+                reps: int.parse(_repsController.text),
+              ),
+            );
+          },
+          child: const Text('保存'),
+        ),
+      ],
+    );
   }
 }

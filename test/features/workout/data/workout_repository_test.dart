@@ -180,4 +180,39 @@ void main() {
     expect(await workoutRepository.getCompletedSessionSummaries(), isEmpty);
     expect((await workoutRepository.getActiveSession())?.id, duplicated.id);
   });
+
+  test('進行中のセットを編集・削除して番号を詰め直せる', () async {
+    final session = await workoutRepository.startSession();
+    await workoutRepository.addExerciseSets(
+      sessionId: session.id,
+      equipmentId: 'chest-press',
+      sets: const [
+        ExerciseSetValue(weightKg: 20, reps: 15),
+        ExerciseSetValue(weightKg: 20, reps: 15),
+        ExerciseSetValue(weightKg: 20, reps: 15),
+      ],
+    );
+    final original = await workoutRepository.getSessionSets(
+      sessionId: session.id,
+      equipmentId: 'chest-press',
+    );
+
+    await workoutRepository.updateExerciseSet(
+      setId: original[1].id!,
+      weightKg: 25,
+      reps: 12,
+    );
+    await workoutRepository.deleteExerciseSet(original.first.id!);
+    await workoutRepository.updateSessionNote(session.id, 'フォームを意識した');
+
+    final updated = await workoutRepository.getSessionSets(
+      sessionId: session.id,
+      equipmentId: 'chest-press',
+    );
+    final summary = await workoutRepository.getSessionSummary(session.id);
+    expect(updated.map((set) => set.setNumber), [1, 2]);
+    expect(updated.first.weightKg, 25);
+    expect(updated.first.reps, 12);
+    expect(summary.session.note, 'フォームを意識した');
+  });
 }
