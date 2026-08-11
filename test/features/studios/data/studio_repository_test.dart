@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('店舗APIの器具IDをアプリ内器具と台数へ変換できる', () {
@@ -58,5 +59,26 @@ void main() {
     expect(restored.id, original.id);
     expect(restored.name, original.name);
     expect(restored.equipmentUnits, original.equipmentUnits);
+  });
+
+  test('ホーム用店舗をお気に入りとして保存し解除できる', () async {
+    SharedPreferences.setMockInitialValues({});
+    const studio = StudioItem(
+      id: '123',
+      name: 'テスト店',
+      address: '',
+      access: '',
+      equipmentUnits: {'chest-press': 2},
+    );
+
+    await StudioRepository.instance.setPreferredStudio(studio);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getStringList('studios.favoriteIds'), ['123']);
+    expect(preferences.getString('studios.preferredId'), '123');
+
+    await StudioRepository.instance.setPreferredStudio(null);
+    expect(preferences.getString('studios.preferredId'), isNull);
+    expect(preferences.getBool('studios.preferredConfigured'), isTrue);
+    expect(await StudioRepository.instance.preferredStudio(), isNull);
   });
 }

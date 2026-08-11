@@ -38,12 +38,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('トレーニングを始める'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('店舗を選ばずに続ける'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('器具を選ぶ'), findsOneWidget);
     await tester.tap(find.text('チェストプレス'));
     await tester.pumpAndSettle();
     expect(find.text('前回の3セットをコピー'), findsOneWidget);
@@ -90,15 +84,8 @@ void main() {
 
     await tester.tap(find.text('完了'));
     await tester.pumpAndSettle();
-    expect(find.text('今日の記録'), findsOneWidget);
-    expect(find.text('チェストプレス'), findsOneWidget);
-    await tester.tap(find.text('別の器具を追加'));
+    await tester.ensureVisible(find.text('アブベンチ'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('アブベンチ'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
     await tester.tap(find.text('アブベンチ'));
     await tester.pumpAndSettle();
 
@@ -112,9 +99,11 @@ void main() {
 
     await tester.tap(find.text('完了'));
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -1800));
+    await tester.pumpAndSettle();
     expect(find.textContaining('チェストプレス'), findsWidgets);
-    expect(find.textContaining('アブベンチ'), findsOneWidget);
-    await tester.tap(find.text('トレーニングを終了'));
+    expect(find.textContaining('アブベンチ'), findsWidgets);
+    await tester.tap(find.text('今日の記録を完了'));
     await tester.pumpAndSettle();
 
     expect(find.text('2種目・8セット'), findsOneWidget);
@@ -127,8 +116,7 @@ void main() {
     expect(await repository.getActiveSession(), isNull);
     await tester.tap(find.text('ホームへ戻る'));
     await tester.pumpAndSettle();
-    expect(find.text('トレーニングを始める'), findsOneWidget);
-    expect(find.text('今日の記録'), findsOneWidget);
+    expect(find.text('器具を選んで記録'), findsOneWidget);
     final homeHistory = await repository.getCompletedSessionSummaries();
     expect(
       homeHistory.first.exercises.map((exercise) => exercise.equipmentName),
@@ -201,16 +189,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('トレーニングを始める'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('店舗を選ばずに続ける'));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('トレッドミル'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.drag(find.byType(ListView).last, const Offset(0, -120));
+    await tester.ensureVisible(find.text('トレッドミル'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('トレッドミル'));
     await tester.pumpAndSettle();
@@ -235,10 +214,12 @@ void main() {
     await tester.tap(find.text('この器具を終了'));
     await tester.pumpAndSettle();
 
+    await tester.drag(find.byType(ListView).last, const Offset(0, -1800));
+    await tester.pumpAndSettle();
     expect(find.text('今日の記録'), findsOneWidget);
-    expect(find.text('トレッドミル'), findsOneWidget);
+    expect(find.text('トレッドミル'), findsWidgets);
     expect(find.text('2分・1.2km'), findsOneWidget);
-    await tester.tap(find.text('トレーニングを終了'));
+    await tester.tap(find.text('今日の記録を完了'));
     await tester.pumpAndSettle();
     expect(find.text('1種目・2分'), findsOneWidget);
     await tester.tap(find.text('保存して完了'));

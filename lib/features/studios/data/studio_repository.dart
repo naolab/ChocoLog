@@ -48,6 +48,8 @@ class StudioRepository {
   static const _machinesUrl =
       'https://chocozap.g.kuroco.app/rcms-api/57/training_machines';
   static const _favoriteIdsKey = 'studios.favoriteIds';
+  static const _preferredStudioIdKey = 'studios.preferredId';
+  static const _preferredStudioConfiguredKey = 'studios.preferredConfigured';
   static const _cacheLifetime = Duration(hours: 24);
 
   List<StudioItem>? _memoryCache;
@@ -105,12 +107,40 @@ class StudioRepository {
     final ids = await favoriteIds();
     favorite ? ids.add(id) : ids.remove(id);
     await preferences.setStringList(_favoriteIdsKey, ids.toList()..sort());
+    if (!favorite && preferences.getString(_preferredStudioIdKey) == id) {
+      await preferences.remove(_preferredStudioIdKey);
+    }
   }
 
   Future<List<StudioItem>> favorites() async {
     final ids = await favoriteIds();
     if (ids.isEmpty) return const [];
     return (await load()).where((studio) => ids.contains(studio.id)).toList();
+  }
+
+  Future<StudioItem?> preferredStudio() async {
+    final preferences = await SharedPreferences.getInstance();
+    final preferredId = preferences.getString(_preferredStudioIdKey);
+    if (preferences.getBool(_preferredStudioConfiguredKey) == true &&
+        preferredId == null) {
+      return null;
+    }
+    final favoriteIds = await this.favoriteIds();
+    final targetId = preferredId ?? favoriteIds.firstOrNull;
+    if (targetId == null) return null;
+    return findById(targetId);
+  }
+
+  Future<void> setPreferredStudio(StudioItem? studio) async {
+    final preferences = await SharedPreferences.getInstance();
+    if (studio == null) {
+      await preferences.remove(_preferredStudioIdKey);
+      await preferences.setBool(_preferredStudioConfiguredKey, true);
+      return;
+    }
+    await setFavorite(studio.id, true);
+    await preferences.setString(_preferredStudioIdKey, studio.id);
+    await preferences.setBool(_preferredStudioConfiguredKey, true);
   }
 
   Future<List<StudioItem>> _fetch() async {

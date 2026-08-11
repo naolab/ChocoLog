@@ -44,15 +44,19 @@ void main() {
     await tester.tap(find.text('設定を保存して始める'));
     await tester.pumpAndSettle();
 
-    expect(find.text('トレーニングを始める'), findsOneWidget);
-    expect(find.text('今日のトレーニング'), findsOneWidget);
-    expect(find.text('完了したトレーニングはまだありません'), findsOneWidget);
+    expect(find.text('ChocoLog'), findsOneWidget);
+    expect(find.text('店舗未設定'), findsOneWidget);
+    expect(find.text('器具を選んで記録'), findsOneWidget);
+    expect(find.text('ショルダープレス'), findsOneWidget);
     expect(preferences.isCompleted, isTrue);
     expect(preferences.weeklyTarget, 3);
     expect(preferences.reminderEnabled, isTrue);
     expect(preferences.reminderWeekdays, [DateTime.tuesday, DateTime.saturday]);
     expect(preferences.reminderHour, 19);
     expect(preferences.reminderMinute, 0);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('完了済みならホームから通常3タブへ移動できる', (tester) async {
@@ -69,12 +73,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('トレーニングを始める'), findsOneWidget);
+    expect(find.text('器具を選んで記録'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
 
-    await tester.tap(find.text('トレーニングを始める'));
+    await tester.tap(find.text('チェストプレス'));
     await tester.pumpAndSettle();
-    expect(find.text('今回の店舗'), findsOneWidget);
+    expect(find.text('前回のセット'), findsNothing);
+    expect(find.text('このセットを追加'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
 
     await tester.pageBack();
@@ -100,7 +105,10 @@ void main() {
 
     await tester.tap(find.text('ホーム'));
     await tester.pumpAndSettle();
-    expect(find.text('今日のトレーニング'), findsOneWidget);
+    expect(find.text('器具を選んで記録'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('レポートの履歴から同じセットを開始できる', (tester) async {
@@ -129,8 +137,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('今日の記録'), findsOneWidget);
-    expect(find.textContaining('チェストプレス'), findsOneWidget);
+    await tester.drag(find.byType(ListView).last, const Offset(0, -1800));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('チェストプレス'), findsWidgets);
     await tester.tap(find.text('レポート'));
     await tester.pumpAndSettle();
     final sessionTitle = find.textContaining('1種目・2セット');

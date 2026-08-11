@@ -8,9 +8,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class StrengthEntryScreen extends ConsumerStatefulWidget {
-  const StrengthEntryScreen({super.key, required this.equipmentId});
+  const StrengthEntryScreen({
+    super.key,
+    required this.equipmentId,
+    this.returnToHome = false,
+  });
 
   final String equipmentId;
+  final bool returnToHome;
 
   @override
   ConsumerState<StrengthEntryScreen> createState() =>
@@ -86,7 +91,11 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
         title: Text(_equipment?.name ?? '記録'),
         actions: [
           TextButton(
-            onPressed: _saving ? null : () => context.go('/workout/session'),
+            onPressed: _saving
+                ? null
+                : () => context.go(
+                    widget.returnToHome ? '/home' : '/workout/session',
+                  ),
             child: const Text('完了'),
           ),
         ],
