@@ -1,5 +1,6 @@
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
+import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +16,14 @@ class EquipmentSelectionScreen extends ConsumerStatefulWidget {
 class _EquipmentSelectionScreenState
     extends ConsumerState<EquipmentSelectionScreen> {
   var _query = '';
+  StudioItem? _studio;
+  var _onlyStudioEquipment = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_loadStudio);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +42,18 @@ class _EquipmentSelectionScreenState
                 border: OutlineInputBorder(),
               ),
             ),
+            if (_studio != null) ...[
+              const SizedBox(height: 10),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('${_studio!.name}の器具'),
+                subtitle: const Text('公式Webの参考情報を使用'),
+                value: _onlyStudioEquipment,
+                onChanged: (value) {
+                  setState(() => _onlyStudioEquipment = value);
+                },
+              ),
+            ],
             const SizedBox(height: 16),
             Expanded(
               child: equipment.when(
@@ -41,7 +62,14 @@ class _EquipmentSelectionScreenState
                     const Center(child: Text('器具一覧を読み込めませんでした')),
                 data: (items) {
                   final filtered = items
-                      .where((item) => item.name.contains(_query))
+                      .where(
+                        (item) =>
+                            item.name.contains(_query) &&
+                            (!_onlyStudioEquipment ||
+                                _studio == null ||
+                                _studio!.equipmentUnits.isEmpty ||
+                                _studio!.equipmentUnits.containsKey(item.id)),
+                      )
                       .toList(growable: false);
                   if (filtered.isEmpty) {
                     return const Center(child: Text('該当する器具がありません'));
@@ -51,6 +79,7 @@ class _EquipmentSelectionScreenState
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) => _EquipmentTile(
                       equipment: filtered[index],
+                      units: _studio?.equipmentUnits[filtered[index].id],
                       onTap: () => _openEquipment(filtered[index]),
                     ),
                   );
@@ -61,6 +90,21 @@ class _EquipmentSelectionScreenState
         ),
       ),
     );
+  }
+
+  Future<void> _loadStudio() async {
+    try {
+      final session = await ref
+          .read(workoutRepositoryProvider)
+          .getActiveSession();
+      if (session?.studioId == null) return;
+      final studio = await StudioRepository.instance.findById(
+        session!.studioId!,
+      );
+      if (mounted) setState(() => _studio = studio);
+    } catch (_) {
+      // Studio data is optional; the complete equipment list remains available.
+    }
   }
 
   void _openEquipment(EquipmentItem equipment) {
@@ -74,10 +118,15 @@ class _EquipmentSelectionScreenState
 }
 
 class _EquipmentTile extends StatelessWidget {
-  const _EquipmentTile({required this.equipment, required this.onTap});
+  const _EquipmentTile({
+    required this.equipment,
+    required this.onTap,
+    this.units,
+  });
 
   final EquipmentItem equipment;
   final VoidCallback onTap;
+  final int? units;
 
   @override
   Widget build(BuildContext context) {
@@ -91,11 +140,16 @@ class _EquipmentTile extends StatelessWidget {
         ),
       ),
       title: Text(equipment.name),
-      subtitle: Text(switch (equipment.metricType) {
-        'bodyweight' => '自重・回数',
-        'cardio' => '時間',
-        _ => '重量・回数',
-      }),
+      subtitle: Text(
+        [
+          switch (equipment.metricType) {
+            'bodyweight' => '自重・回数',
+            'cardio' => '時間',
+            _ => '重量・回数',
+          },
+          if (units != null) '$units台',
+        ].join('・'),
+      ),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );

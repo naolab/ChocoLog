@@ -16,12 +16,12 @@ class WorkoutFlowController
 
   final WorkoutRepository _repository;
 
-  Future<WorkoutSessionSnapshot> ensureSession() async {
+  Future<WorkoutSessionSnapshot> ensureSession({String? studioId}) async {
     state = const AsyncLoading();
     try {
       final session =
           await _repository.getActiveSession() ??
-          await _repository.startSession();
+          await _repository.startSession(studioId: studioId);
       state = AsyncData(session);
       return session;
     } catch (error, stackTrace) {
