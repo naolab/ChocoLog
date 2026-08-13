@@ -1,5 +1,6 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/equipment/presentation/equipment_image.dart';
 import 'package:chocolog/features/history/presentation/history_screens.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
@@ -82,7 +83,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       future: _history,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: ChocoLogLoadingIndicator());
         }
         if (snapshot.hasError) {
           return _ReportError(onRetry: _reload);
@@ -91,7 +92,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           history: snapshot.requireData,
           period: _period,
         );
-        return RefreshIndicator(
+        return ChocoLogRefreshIndicator(
           onRefresh: _reload,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),

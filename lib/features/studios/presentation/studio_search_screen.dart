@@ -1,4 +1,5 @@
 import 'package:chocolog/app/theme.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:flutter/material.dart';
 
@@ -64,7 +65,7 @@ class _StudioSearchScreenState extends State<StudioSearchScreen> {
                 future: _studios,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: ChocoLogLoadingIndicator());
                   }
                   if (snapshot.hasError) {
                     return _StudioError(onRetry: _refresh);

@@ -1,5 +1,6 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/equipment/presentation/equipment_image.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
@@ -36,7 +37,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       future: _history,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: ChocoLogLoadingIndicator());
         }
         if (snapshot.hasError) {
           return _HistoryError(onRetry: _reload);
@@ -59,7 +60,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             )
             .toList();
 
-        return RefreshIndicator(
+        return ChocoLogRefreshIndicator(
           onRefresh: _reload,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -165,7 +166,7 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
         future: _summary,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: ChocoLogLoadingIndicator());
           }
           if (snapshot.hasError) {
             return const Center(child: Text('記録を読み込めませんでした'));
