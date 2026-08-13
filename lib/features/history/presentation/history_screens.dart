@@ -441,28 +441,65 @@ class _SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final equipmentNames = summary.exercises
-        .map((exercise) => exercise.equipmentName)
-        .join('・');
     return Card(
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: ValueKey('history-session-${summary.session.id}'),
         onTap: () async {
           final changed = await context.push<bool>(
             '/reports/history/${summary.session.id}',
           );
           if (changed == true) await onChanged();
         },
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        leading: EquipmentImage(
-          equipmentId: summary.exercises.first.equipmentId,
-          size: 58,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    _sessionTotalLabel(summary),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              const SizedBox(height: 12),
+              for (final exercise in summary.exercises)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      EquipmentImage(
+                        equipmentId: exercise.equipmentId,
+                        size: 54,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              exercise.equipmentName,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _exerciseLabel(exercise),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: ChocoLogColors.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
-        title: Text(_sessionTotalLabel(summary)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(equipmentNames),
-        ),
-        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }
@@ -534,6 +571,21 @@ String _setLabel(WorkoutExerciseSummary exercise, ExerciseSetValue set) {
             : '重量未設定'
       : '${set.weightKg}kg';
   return '$metric × ${set.reps}回';
+}
+
+String _exerciseLabel(WorkoutExerciseSummary exercise) {
+  if (exercise.recordType == 'cardio') return _cardioLabel(exercise);
+  if (exercise.sets.isEmpty) return '記録済み';
+  final first = exercise.sets.first;
+  final allSame = exercise.sets.every(
+    (set) => set.weightKg == first.weightKg && set.reps == first.reps,
+  );
+  if (!allSame) {
+    final totalReps = exercise.sets.fold(0, (sum, set) => sum + set.reps);
+    return '${exercise.sets.length}セット・合計$totalReps回';
+  }
+  final weight = first.weightKg == null ? '' : '${first.weightKg}kg × ';
+  return '$weight${first.reps}回 × ${exercise.sets.length}セット';
 }
 
 String _sessionTotalLabel(WorkoutSessionSummary summary) {
