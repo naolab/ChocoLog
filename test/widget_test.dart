@@ -1,4 +1,5 @@
 import 'package:chocolog/app/app.dart';
+import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/app_database.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
@@ -221,6 +222,7 @@ void main() {
     expect(find.text('筋トレ'), findsWidgets);
     expect(find.text('有酸素'), findsWidgets);
     expect(find.text('器具ごとのセット数を日別に表示'), findsOneWidget);
+    expect(find.byKey(const ValueKey('chart-legend-チェストプレス')), findsOneWidget);
     final today = DateTime.now();
     final tomorrow = DateTime(today.year, today.month, today.day + 1);
     final todayKey = ValueKey(
@@ -240,9 +242,23 @@ void main() {
       ),
     );
     expect(bar.child, isA<SizedBox>());
+    final decoration = bar.decoration! as BoxDecoration;
+    expect(decoration.border, isNull);
+    expect(decoration.borderRadius, BorderRadius.circular(7));
     expect(find.text('2セット'), findsWidgets);
     await tester.tap(find.byKey(todayKey));
     await tester.pumpAndSettle();
+    final selectedDateLabel = tester.widget<AnimatedContainer>(
+      find.byKey(
+        ValueKey(
+          'analysis-date-label-${DateTime(today.year, today.month, today.day).toIso8601String()}',
+        ),
+      ),
+    );
+    expect(
+      (selectedDateLabel.decoration! as BoxDecoration).color,
+      ChocoLogColors.softYellow,
+    );
     expect(find.text('${today.month}月${today.day}日の記録'), findsOneWidget);
     expect(find.text('チェストプレス'), findsWidgets);
     expect(find.text('2セット'), findsWidgets);
