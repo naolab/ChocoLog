@@ -39,7 +39,7 @@ struct CardioLiveActivityWidget: Widget {
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
-          Label("ChocoLog", systemImage: "figure.run")
+          Label("chocoLOG", systemImage: "figure.run")
             .font(.caption.bold())
         }
         DynamicIslandExpandedRegion(.trailing) {

@@ -52,7 +52,7 @@ class ReminderService {
         await _notifications.zonedSchedule(
           id: _firstNotificationId + index,
           title: 'トレーニングの時間です',
-          body: '今日のメニューをChocoLogに記録しましょう',
+          body: '今日のメニューをchocoLOGに記録しましょう',
           scheduledDate: _nextWeekday(weekday, hour, minute),
           notificationDetails: const NotificationDetails(
             android: AndroidNotificationDetails(

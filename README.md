@@ -1,4 +1,4 @@
-# ChocoLog
+# chocoLOG
 
 chocoZAP利用者向けの、筋力トレーニングと有酸素運動の記録アプリです。
 

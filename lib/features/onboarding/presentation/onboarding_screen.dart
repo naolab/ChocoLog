@@ -146,7 +146,7 @@ class _IntroductionStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _StepLayout(
       icon: Icons.fitness_center,
-      title: 'ChocoLog',
+      title: 'chocoLOG',
       description: 'いつものトレーニングを\nかんたんに記録',
       details: ['筋トレの重量・回数・セット', '有酸素運動の時間', '前回メニューをすぐにコピー'],
       footnote: 'ログイン不要・記録は端末内に保存されます\nchocoZAP公式・公認アプリではありません',

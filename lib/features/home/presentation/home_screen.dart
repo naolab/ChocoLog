@@ -32,7 +32,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
     final equipment = ref.watch(activeEquipmentProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('ChocoLog')),
+      appBar: AppBar(title: const Text('chocoLOG')),
       body: SafeArea(
         child: FutureBuilder<_HomeData>(
           future: _data,
