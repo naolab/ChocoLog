@@ -57,6 +57,7 @@ abstract final class ChocoLogTheme {
         ),
       ),
       scaffoldBackgroundColor: ChocoLogColors.canvas,
+      canvasColor: ChocoLogColors.surface,
       dividerColor: ChocoLogColors.border,
       appBarTheme: const AppBarTheme(
         backgroundColor: ChocoLogColors.surface,
@@ -78,6 +79,30 @@ abstract final class ChocoLogTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: ChocoLogColors.border),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: ChocoLogColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: ChocoLogColors.surface,
+        modalBackgroundColor: ChocoLogColors.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: ChocoLogColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          backgroundColor: const WidgetStatePropertyAll(ChocoLogColors.surface),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(

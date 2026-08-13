@@ -75,8 +75,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 const ListTile(title: Text('週の開始曜日'), trailing: Text('月曜日')),
-                const Divider(height: 1),
-                const ListTile(title: Text('重量単位'), trailing: Text('kg')),
               ],
             ),
           ),
@@ -88,7 +86,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   title: const Text('週間リマインダー'),
                   subtitle: Text(
                     _reminderEnabled
-                        ? '${_weekdayLabel(_weekdays)}・${_time.format(context)}'
+                        ? '${_weekdayLabel(_weekdays)}・${_timeLabel(_time)}'
                         : 'オフ',
                   ),
                   value: _reminderEnabled,
@@ -113,12 +111,111 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ],
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: _saving ? null : _selectTime,
-                    icon: const Icon(Icons.schedule),
-                    label: Text('通知時刻　${_time.format(context)}'),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '通知時刻',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 5,
+                              child: DropdownButtonFormField<bool>(
+                                initialValue: _isPm,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  labelText: '午前・午後',
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: false,
+                                    child: Text('午前'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: true,
+                                    child: Text('午後'),
+                                  ),
+                                ],
+                                onChanged: _saving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          _setMeridiem(value);
+                                        }
+                                      },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 3,
+                              child: DropdownButtonFormField<int>(
+                                initialValue: _hour12,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  labelText: '時',
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                items: [
+                                  for (var hour = 1; hour <= 12; hour++)
+                                    DropdownMenuItem(
+                                      value: hour,
+                                      child: Text('$hour'),
+                                    ),
+                                ],
+                                onChanged: _saving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) _setHour(value);
+                                      },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 3,
+                              child: DropdownButtonFormField<int>(
+                                initialValue: _time.minute,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  labelText: '分',
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                items: [
+                                  for (final minute in _minuteOptions)
+                                    DropdownMenuItem(
+                                      value: minute,
+                                      child: Text(
+                                        minute.toString().padLeft(2, '0'),
+                                      ),
+                                    ),
+                                ],
+                                onChanged: _saving
+                                    ? null
+                                    : (value) {
+                                        if (value != null) _setMinute(value);
+                                      },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 6),
                 ],
               ],
             ),
@@ -185,10 +282,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await _save();
   }
 
-  Future<void> _selectTime() async {
-    final selected = await showTimePicker(context: context, initialTime: _time);
-    if (selected == null || !mounted) return;
-    setState(() => _time = selected);
+  bool get _isPm => _time.hour >= 12;
+
+  int get _hour12 {
+    final hour = _time.hour % 12;
+    return hour == 0 ? 12 : hour;
+  }
+
+  List<int> get _minuteOptions => ({
+    for (var minute = 0; minute < 60; minute += 5) minute,
+    _time.minute,
+  }.toList()..sort());
+
+  Future<void> _setMeridiem(bool isPm) async {
+    final hour = (_hour12 % 12) + (isPm ? 12 : 0);
+    setState(() => _time = TimeOfDay(hour: hour, minute: _time.minute));
+    await _save();
+  }
+
+  Future<void> _setHour(int hour12) async {
+    final hour = (hour12 % 12) + (_isPm ? 12 : 0);
+    setState(() => _time = TimeOfDay(hour: hour, minute: _time.minute));
+    await _save();
+  }
+
+  Future<void> _setMinute(int minute) async {
+    setState(() => _time = TimeOfDay(hour: _time.hour, minute: minute));
     await _save();
   }
 
@@ -327,3 +446,10 @@ String _weekdayLabel(Set<int> weekdays) => [
   for (final entry in _weekdayLabels.entries)
     if (weekdays.contains(entry.key)) entry.value,
 ].join('・');
+
+String _timeLabel(TimeOfDay time) {
+  final isPm = time.hour >= 12;
+  final hour = time.hour % 12 == 0 ? 12 : time.hour % 12;
+  final minute = time.minute.toString().padLeft(2, '0');
+  return '${isPm ? '午後' : '午前'} $hour:$minute';
+}
