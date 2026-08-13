@@ -14,6 +14,16 @@ enum _ReportPeriod { week, month }
 
 enum _ReportSection { history, analysis }
 
+enum _ActivityMetric { strength, cardio }
+
+const _chartColors = [
+  ChocoLogColors.yellow,
+  Color(0xFF8FD8E8),
+  Color(0xFFFFA982),
+  Color(0xFFA9D48C),
+  Color(0xFFC4B5E8),
+];
+
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key, required this.preferences});
 
@@ -27,6 +37,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   late Future<List<WorkoutSessionSummary>> _history;
   var _section = _ReportSection.history;
   var _period = _ReportPeriod.week;
+  var _activityMetric = _ActivityMetric.strength;
+  DateTime? _selectedChartDate;
 
   @override
   void initState() {
@@ -95,6 +107,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         return ChocoLogRefreshIndicator(
           onRefresh: _reload,
           child: ListView(
+            key: const ValueKey('analysis-list'),
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
             children: [
@@ -105,7 +118,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 ],
                 selected: {_period},
                 onSelectionChanged: (selection) {
-                  setState(() => _period = selection.single);
+                  setState(() {
+                    _period = selection.single;
+                    _selectedChartDate = null;
+                  });
                 },
               ),
               const SizedBox(height: 18),
@@ -126,9 +142,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text('運動した日', style: Theme.of(context).textTheme.titleMedium),
+                Text('日ごとの運動量', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 10),
-                _ActivityChart(report: report),
+                _ActivityChart(
+                  report: report,
+                  metric: _activityMetric,
+                  selectedDate: _selectedChartDate,
+                  onMetricChanged: (metric) => setState(() {
+                    _activityMetric = metric;
+                    _selectedChartDate = null;
+                  }),
+                  onDateSelected: (date) =>
+                      setState(() => _selectedChartDate = date),
+                ),
                 const SizedBox(height: 24),
                 Text('よく使った器具', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 10),
@@ -168,22 +194,78 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final targetLabel = report.period == _ReportPeriod.week
-        ? ' / $weeklyTarget回'
-        : '回';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Metric(
-              label: '運動',
-              value: '${report.sessions.length}$targetLabel',
+            Text('概要', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                _Metric(label: 'トレーニング', value: '${report.activeDayCount}日'),
+                _Metric(label: '合計セット', value: '${report.totalSets}セット'),
+                _Metric(label: '有酸素', value: '${report.cardioMinutes}分'),
+              ],
             ),
-            _Metric(label: '筋トレ', value: '${report.totalSets}セット'),
-            _Metric(label: '有酸素', value: '${report.cardioMinutes}分'),
+            const SizedBox(height: 18),
+            _GoalStatus(report: report, weeklyTarget: weeklyTarget),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _GoalStatus extends StatelessWidget {
+  const _GoalStatus({required this.report, required this.weeklyTarget});
+
+  final _ReportData report;
+  final int weeklyTarget;
+
+  @override
+  Widget build(BuildContext context) {
+    final weeklyAchieved = report.activeDayCount >= weeklyTarget;
+    final achievedWeeks = report.achievedWeekCount(weeklyTarget);
+    final title = report.period == _ReportPeriod.week
+        ? weeklyAchieved
+              ? '今週の目標を達成！'
+              : '目標まであと${weeklyTarget - report.activeDayCount}回'
+        : '$achievedWeeks週で目標を達成';
+    final detail = report.period == _ReportPeriod.week
+        ? '週$weeklyTarget回の目標'
+        : '今月の${report.weekCount}週間・週$weeklyTarget回の目標';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: ChocoLogColors.softYellow,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            report.period == _ReportPeriod.week && !weeklyAchieved
+                ? Icons.flag_outlined
+                : Icons.check_circle,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  detail,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -210,89 +292,218 @@ class _Metric extends StatelessWidget {
 }
 
 class _ActivityChart extends StatelessWidget {
-  const _ActivityChart({required this.report});
+  const _ActivityChart({
+    required this.report,
+    required this.metric,
+    required this.selectedDate,
+    required this.onMetricChanged,
+    required this.onDateSelected,
+  });
 
   final _ReportData report;
+  final _ActivityMetric metric;
+  final DateTime? selectedDate;
+  final ValueChanged<_ActivityMetric> onMetricChanged;
+  final ValueChanged<DateTime> onDateSelected;
 
   @override
   Widget build(BuildContext context) {
-    final points = report.chartPoints;
+    final points = report.chartPoints(metric);
     final maximum = points.fold(1, (value, point) {
-      return point.count > value ? point.count : value;
+      return point.total > value ? point.total : value;
     });
+    final selectedPoint = selectedDate == null
+        ? null
+        : points
+              .where((point) => _sameDay(point.date, selectedDate!))
+              .firstOrNull;
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${report.activeDayCount}日運動しました',
-              style: Theme.of(context).textTheme.titleLarge,
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<_ActivityMetric>(
+                segments: const [
+                  ButtonSegment(
+                    value: _ActivityMetric.strength,
+                    label: Text('筋トレ'),
+                  ),
+                  ButtonSegment(
+                    value: _ActivityMetric.cardio,
+                    label: Text('有酸素'),
+                  ),
+                ],
+                selected: {metric},
+                onSelectionChanged: (value) => onMetricChanged(value.first),
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 12),
             Text(
-              report.period == _ReportPeriod.week
-                  ? '棒の高さは1日の記録回数です'
-                  : '棒の高さは5日間の記録回数です',
+              metric == _ActivityMetric.strength
+                  ? '器具ごとのセット数を日別に表示'
+                  : '器具ごとの運動時間を日別に表示',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
             ),
             const SizedBox(height: 18),
-            SizedBox(
-              height: 156,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (final point in points)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (point.count > 0)
-                              Text(
-                                '${point.count}',
-                                style: Theme.of(context).textTheme.labelSmall,
-                              ),
-                            const SizedBox(height: 4),
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              height: point.count == 0
-                                  ? 6
-                                  : 92 * point.count / maximum + 12,
-                              decoration: BoxDecoration(
-                                color: point.count == 0
-                                    ? ChocoLogColors.border
-                                    : ChocoLogColors.yellow,
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(8),
-                                ),
-                                border: Border.all(
-                                  color: point.count == 0
-                                      ? ChocoLogColors.border
-                                      : ChocoLogColors.ink,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              point.label,
-                              maxLines: 1,
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
-                          ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: report.period == _ReportPeriod.month,
+              child: SizedBox(
+                width: report.period == _ReportPeriod.week
+                    ? MediaQuery.sizeOf(context).width - 72
+                    : points.length * 34,
+                height: 170,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final point in points)
+                      SizedBox(
+                        width: report.period == _ReportPeriod.week
+                            ? (MediaQuery.sizeOf(context).width - 72) / 7
+                            : 34,
+                        child: _ChartBar(
+                          point: point,
+                          maximum: maximum,
+                          colorForEquipment: (equipmentId) {
+                            final index = report.equipment.indexWhere(
+                              (item) => item.id == equipmentId,
+                            );
+                            return _chartColors[(index < 0 ? 0 : index) %
+                                _chartColors.length];
+                          },
+                          selected:
+                              selectedDate != null &&
+                              _sameDay(point.date, selectedDate!),
+                          onTap: () => onDateSelected(point.date),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
+            if (selectedPoint != null) ...[
+              const Divider(height: 28),
+              _SelectedDayDetails(point: selectedPoint, metric: metric),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ChartBar extends StatelessWidget {
+  const _ChartBar({
+    required this.point,
+    required this.maximum,
+    required this.colorForEquipment,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _ChartPoint point;
+  final int maximum;
+  final Color Function(String equipmentId) colorForEquipment;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: ValueKey('analysis-day-${point.date.toIso8601String()}'),
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (point.total > 0)
+              Text(
+                '${point.total}',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            const SizedBox(height: 4),
+            Container(
+              height: point.total == 0 ? 6 : 98 * point.total / maximum + 10,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: point.total == 0
+                    ? ChocoLogColors.border
+                    : ChocoLogColors.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(7),
+                ),
+                border: Border.all(
+                  color: selected ? ChocoLogColors.ink : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: point.total == 0
+                  ? null
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        for (final item in point.equipment)
+                          Expanded(
+                            flex: item.value,
+                            child: ColoredBox(
+                              color: colorForEquipment(item.id),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 6),
+            Text(point.label, style: Theme.of(context).textTheme.labelSmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectedDayDetails extends StatelessWidget {
+  const _SelectedDayDetails({required this.point, required this.metric});
+
+  final _ChartPoint point;
+  final _ActivityMetric metric;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${point.date.month}月${point.date.day}日の記録',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 10),
+        if (point.equipment.isEmpty)
+          const Text('この種類の記録はありません')
+        else
+          for (final item in point.equipment)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  EquipmentImage(equipmentId: item.id, size: 42),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(item.name)),
+                  Text(
+                    metric == _ActivityMetric.strength
+                        ? '${item.value}セット'
+                        : '${item.value}分',
+                  ),
+                ],
+              ),
+            ),
+      ],
     );
   }
 }
@@ -325,7 +536,7 @@ class _EquipmentCard extends StatelessWidget {
         ),
         title: Text(equipment.name),
         subtitle: Text(equipment.performanceLabel),
-        trailing: Text('${equipment.usageCount}回'),
+        trailing: Text('${equipment.activeDayCount}日'),
       ),
     );
   }
@@ -385,35 +596,69 @@ class _ReportData {
       sessions.fold(0, (sum, item) => sum + item.totalSetCount);
   int get cardioMinutes =>
       sessions.fold(0, (sum, item) => sum + item.totalCardioSeconds) ~/ 60;
-  int get activeDayCount =>
-      chartPoints.where((point) => point.count > 0).length;
-  List<_ChartPoint> get chartPoints {
-    final sessionCounts = <DateTime, int>{};
+  int get activeDayCount => sessions
+      .map((summary) => _dateOnly(summary.session.startedAt.toLocal()))
+      .toSet()
+      .length;
+  int get weekCount => ((end.day + 6) / 7).floor();
+  int achievedWeekCount(int weeklyTarget) {
+    final activeDates = sessions
+        .map((summary) => _dateOnly(summary.session.startedAt.toLocal()))
+        .toSet();
+    var count = 0;
+    for (
+      var weekStart = start;
+      !weekStart.isAfter(end);
+      weekStart = weekStart.add(const Duration(days: 7))
+    ) {
+      final weekEnd = weekStart.add(const Duration(days: 6));
+      final days = activeDates
+          .where((date) => !date.isBefore(weekStart) && !date.isAfter(weekEnd))
+          .length;
+      if (days >= weeklyTarget) count++;
+    }
+    return count;
+  }
+
+  List<_ChartPoint> chartPoints(_ActivityMetric metric) {
+    final byDate = <DateTime, Map<String, _DailyEquipmentValue>>{};
     for (final summary in sessions) {
       final local = summary.session.startedAt.toLocal();
       final date = DateTime(local.year, local.month, local.day);
-      sessionCounts.update(date, (count) => count + 1, ifAbsent: () => 1);
-    }
-    if (period == _ReportPeriod.week) {
-      const labels = ['月', '火', '水', '木', '金', '土', '日'];
-      return [
-        for (var index = 0; index < 7; index++)
-          _ChartPoint(
-            label: labels[index],
-            count: sessionCounts[start.add(Duration(days: index))] ?? 0,
+      final equipment = byDate.putIfAbsent(date, () => {});
+      for (final exercise in summary.exercises) {
+        final isCardio = exercise.recordType == 'cardio';
+        if ((metric == _ActivityMetric.cardio) != isCardio) continue;
+        final value = isCardio
+            ? ((exercise.durationSeconds ?? 0) / 60).ceil()
+            : exercise.sets.length;
+        if (value <= 0) continue;
+        equipment.update(
+          exercise.equipmentId,
+          (item) => item.copyWith(value: item.value + value),
+          ifAbsent: () => _DailyEquipmentValue(
+            id: exercise.equipmentId,
+            name: exercise.equipmentName,
+            value: value,
           ),
-      ];
-    }
-    final points = <_ChartPoint>[];
-    for (var day = 1; day <= end.day; day += 5) {
-      final rangeEnd = (day + 4).clamp(1, end.day);
-      var count = 0;
-      for (var current = day; current <= rangeEnd; current++) {
-        count += sessionCounts[DateTime(start.year, start.month, current)] ?? 0;
+        );
       }
-      points.add(_ChartPoint(label: '$day', count: count));
     }
-    return points;
+    const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
+    return [
+      for (
+        var date = start;
+        !date.isAfter(end);
+        date = date.add(const Duration(days: 1))
+      )
+        _ChartPoint(
+          date: date,
+          label: period == _ReportPeriod.week
+              ? weekdays[date.weekday - 1]
+              : '${date.day}',
+          equipment: byDate[date]?.values.toList() ?? const [],
+        ),
+    ];
   }
 
   String get periodLabel => period == _ReportPeriod.week
@@ -438,9 +683,14 @@ class _ReportData {
       return !date.isBefore(start) && !date.isAfter(end);
     }).toList();
     final byEquipment = <String, List<WorkoutExerciseSummary>>{};
+    final equipmentDates = <String, Set<DateTime>>{};
     for (final session in sessions) {
+      final sessionDate = _dateOnly(session.session.startedAt.toLocal());
       for (final exercise in session.exercises) {
         byEquipment.putIfAbsent(exercise.equipmentId, () => []).add(exercise);
+        equipmentDates
+            .putIfAbsent(exercise.equipmentId, () => <DateTime>{})
+            .add(sessionDate);
       }
     }
     final equipment = [
@@ -449,8 +699,9 @@ class _ReportData {
           id: entry.key,
           name: entry.value.first.equipmentName,
           records: entry.value,
+          activeDayCount: equipmentDates[entry.key]!.length,
         ),
-    ]..sort((a, b) => b.usageCount.compareTo(a.usageCount));
+    ]..sort((a, b) => b.activeDayCount.compareTo(a.activeDayCount));
     return _ReportData(
       period: period,
       start: start,
@@ -462,10 +713,32 @@ class _ReportData {
 }
 
 class _ChartPoint {
-  const _ChartPoint({required this.label, required this.count});
+  const _ChartPoint({
+    required this.date,
+    required this.label,
+    required this.equipment,
+  });
 
+  final DateTime date;
   final String label;
-  final int count;
+  final List<_DailyEquipmentValue> equipment;
+
+  int get total => equipment.fold(0, (sum, item) => sum + item.value);
+}
+
+class _DailyEquipmentValue {
+  const _DailyEquipmentValue({
+    required this.id,
+    required this.name,
+    required this.value,
+  });
+
+  final String id;
+  final String name;
+  final int value;
+
+  _DailyEquipmentValue copyWith({required int value}) =>
+      _DailyEquipmentValue(id: id, name: name, value: value);
 }
 
 class _EquipmentReport {
@@ -473,13 +746,14 @@ class _EquipmentReport {
     required this.id,
     required this.name,
     required this.records,
+    required this.activeDayCount,
   });
 
   final String id;
   final String name;
   final List<WorkoutExerciseSummary> records;
+  final int activeDayCount;
 
-  int get usageCount => records.length;
   String get performanceLabel {
     final cardioSeconds = records.fold(
       0,
@@ -496,3 +770,10 @@ class _EquipmentReport {
         : '合計 ${sets.length}セット・最大 ${maximum}kg';
   }
 }
+
+DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+bool _sameDay(DateTime first, DateTime second) =>
+    first.year == second.year &&
+    first.month == second.month &&
+    first.day == second.day;

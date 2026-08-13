@@ -201,9 +201,51 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('分析'));
     await tester.pumpAndSettle();
-    expect(find.text('運動した日'), findsOneWidget);
-    expect(find.text('1日運動しました'), findsOneWidget);
-    expect(find.text('棒の高さは1日の記録回数です'), findsOneWidget);
+    expect(find.text('概要'), findsOneWidget);
+    expect(find.text('トレーニング'), findsOneWidget);
+    expect(find.text('1日'), findsWidgets);
+    expect(find.text('2セット'), findsOneWidget);
+    expect(find.text('目標まであと1回'), findsOneWidget);
+    expect(find.textContaining('/'), findsNothing);
+    expect(find.text('日ごとの運動量'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('器具ごとのセット数を日別に表示'),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('analysis-list')),
+        matching: find.byType(Scrollable),
+      ).first,
+    );
+    expect(find.text('筋トレ'), findsWidgets);
+    expect(find.text('有酸素'), findsWidgets);
+    expect(find.text('器具ごとのセット数を日別に表示'), findsOneWidget);
+    final today = DateTime.now();
+    final todayKey = ValueKey(
+      'analysis-day-${DateTime(today.year, today.month, today.day).toIso8601String()}',
+    );
+    await tester.ensureVisible(find.byKey(todayKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(todayKey));
+    await tester.pumpAndSettle();
+    expect(find.text('${today.month}月${today.day}日の記録'), findsOneWidget);
+    expect(find.text('チェストプレス'), findsWidgets);
+    expect(find.text('2セット'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('よく使った器具'),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('analysis-list')),
+        matching: find.byType(Scrollable),
+      ).first,
+    );
+    expect(find.text('よく使った器具'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('analysis-list')),
+      const Offset(0, -260),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('合計 2セット・最大 25kg'), findsOneWidget);
+    expect(find.text('1日'), findsWidgets);
     await tester.tap(find.text('履歴'));
     await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
