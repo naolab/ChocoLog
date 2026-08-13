@@ -18,22 +18,41 @@ enum _ActivityMetric { strength, cardio }
 
 const _chartColors = [
   ChocoLogColors.yellow,
-  Color(0xFF4DB6C8),
-  Color(0xFFFF8A65),
-  Color(0xFF7CB86C),
-  Color(0xFF9B86D1),
-  Color(0xFFEF6C9B),
-  Color(0xFF5C8FD6),
-  Color(0xFFD6A547),
-  Color(0xFF49A889),
-  Color(0xFFBE6A5A),
-  Color(0xFF7A9E45),
-  Color(0xFF5C6BC0),
-  Color(0xFFD16F3D),
-  Color(0xFF3E9BB3),
-  Color(0xFFA563B8),
-  Color(0xFFB58B38),
+  Color(0xFF0072B2),
+  Color(0xFF009E73),
+  Color(0xFFCC79A7),
+  Color(0xFFD55E00),
+  Color(0xFF56B4E9),
+  Color(0xFFE69F00),
+  Color(0xFF332288),
+  Color(0xFF44AA99),
+  Color(0xFF999933),
+  Color(0xFFCC6677),
+  Color(0xFFAA4499),
 ];
+
+/// The catalog order is also the vertical stacking order in the daily chart.
+/// Keeping it independent of a day's record order makes every color and segment
+/// land in the same place throughout the report.
+const _chartEquipmentOrder = [
+  'shoulder-press',
+  'chest-press',
+  'lat-pulldown',
+  'biceps-curl',
+  'dips',
+  'abdominal-trainer',
+  'ab-bench',
+  'leg-press',
+  'adduction',
+  'abduction',
+  'treadmill',
+  'bike',
+];
+
+int _chartEquipmentIndex(String equipmentId) {
+  final index = _chartEquipmentOrder.indexOf(equipmentId);
+  return index < 0 ? _chartEquipmentOrder.length : index;
+}
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key, required this.preferences});
@@ -362,10 +381,8 @@ class _ActivityChart extends StatelessWidget {
       }
     }
     Color colorForEquipment(String equipmentId) {
-      final index = report.equipment.indexWhere(
-        (item) => item.id == equipmentId,
-      );
-      return _chartColors[(index < 0 ? 0 : index) % _chartColors.length];
+      return _chartColors[_chartEquipmentIndex(equipmentId) %
+          _chartColors.length];
     }
 
     return Card(
@@ -406,7 +423,12 @@ class _ActivityChart extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  for (final item in visibleEquipment.values)
+                  for (final item
+                      in visibleEquipment.values.toList()..sort(
+                        (first, second) => _chartEquipmentIndex(
+                          first.id,
+                        ).compareTo(_chartEquipmentIndex(second.id)),
+                      ))
                     _ChartLegendItem(
                       name: item.name,
                       color: colorForEquipment(item.id),
@@ -422,7 +444,7 @@ class _ActivityChart extends StatelessWidget {
                 width: report.period == _ReportPeriod.week
                     ? MediaQuery.sizeOf(context).width - 72
                     : points.length * 34,
-                height: 170,
+                height: 184,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -514,65 +536,87 @@ class _ChartBar extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            if (point.total > 0)
-              Text(
-                '${point.total}$unit',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            const SizedBox(height: 4),
-            AnimatedOpacity(
-              key: ValueKey('analysis-opacity-${point.date.toIso8601String()}'),
-              opacity: dimmed ? 0.38 : 1,
-              duration: const Duration(milliseconds: 180),
-              child: Container(
-                key: ValueKey(
-                  'analysis-bar-${point.date.toIso8601String()}-${point.total}',
-                ),
-                height: point.total == 0 ? 6 : 98 * point.total / maximum + 10,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: point.total == 0
-                      ? ChocoLogColors.border
-                      : ChocoLogColors.surface,
-                  borderRadius: BorderRadius.circular(7),
-                ),
+            SizedBox(
+              height: 20,
+              child: Align(
+                alignment: Alignment.bottomCenter,
                 child: point.total == 0
                     ? null
-                    : SizedBox.expand(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (final item in point.equipment)
-                              Expanded(
-                                flex: item.value,
-                                child: ColoredBox(
-                                  color: colorForEquipment(item.id),
-                                ),
-                              ),
-                          ],
-                        ),
+                    : Text(
+                        '${point.total}$unit',
+                        style: Theme.of(context).textTheme.labelSmall,
                       ),
               ),
             ),
-            const SizedBox(height: 6),
-            AnimatedContainer(
-              key: ValueKey(
-                'analysis-date-label-${point.date.toIso8601String()}',
+            const SizedBox(height: 4),
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: AnimatedOpacity(
+                  key: ValueKey(
+                    'analysis-opacity-${point.date.toIso8601String()}',
+                  ),
+                  opacity: dimmed ? 0.38 : 1,
+                  duration: const Duration(milliseconds: 180),
+                  child: Container(
+                    key: ValueKey(
+                      'analysis-bar-${point.date.toIso8601String()}-${point.total}',
+                    ),
+                    height: point.total == 0
+                        ? 6
+                        : 100 * point.total / maximum + 10,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: point.total == 0
+                          ? ChocoLogColors.border
+                          : ChocoLogColors.surface,
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: point.total == 0
+                        ? null
+                        : SizedBox.expand(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (final item in point.equipment)
+                                  Expanded(
+                                    flex: item.value,
+                                    child: ColoredBox(
+                                      color: colorForEquipment(item.id),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                  ),
+                ),
               ),
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: selected
-                    ? ChocoLogColors.softYellow
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                point.label,
-                style: Theme.of(context).textTheme.labelSmall,
+            ),
+            const SizedBox(height: 7),
+            SizedBox(
+              height: 22,
+              child: Center(
+                child: AnimatedContainer(
+                  key: ValueKey(
+                    'analysis-date-label-${point.date.toIso8601String()}',
+                  ),
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? ChocoLogColors.softYellow
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    point.label,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
               ),
             ),
           ],
@@ -792,7 +836,7 @@ class _ReportData {
           label: period == _ReportPeriod.week
               ? weekdays[date.weekday - 1]
               : '${date.day}',
-          equipment: byDate[date]?.values.toList() ?? const [],
+          equipment: _orderedDailyEquipment(byDate[date]?.values),
         ),
     ];
   }
@@ -838,6 +882,18 @@ class _ReportData {
       equipment: equipment,
     );
   }
+}
+
+List<_DailyEquipmentValue> _orderedDailyEquipment(
+  Iterable<_DailyEquipmentValue>? values,
+) {
+  final equipment = List<_DailyEquipmentValue>.of(values ?? const []);
+  equipment.sort(
+    (first, second) => _chartEquipmentIndex(
+      first.id,
+    ).compareTo(_chartEquipmentIndex(second.id)),
+  );
+  return equipment;
 }
 
 class _ChartPoint {
