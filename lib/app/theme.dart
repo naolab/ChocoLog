@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 abstract final class ChocoLogColors {
   static const yellow = Color(0xFFFFE62B);
-  static const softYellow = Color(0xFFFFF27A);
   static const paleYellow = Color(0xFFFFF9D6);
   static const canvas = Color(0xFFF5F5F5);
   static const surface = Color(0xFFFFFFFF);
