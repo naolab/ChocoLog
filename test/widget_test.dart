@@ -211,20 +211,36 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('器具ごとのセット数を日別に表示'),
       200,
-      scrollable: find.descendant(
-        of: find.byKey(const ValueKey('analysis-list')),
-        matching: find.byType(Scrollable),
-      ).first,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('analysis-list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     expect(find.text('筋トレ'), findsWidgets);
     expect(find.text('有酸素'), findsWidgets);
     expect(find.text('器具ごとのセット数を日別に表示'), findsOneWidget);
     final today = DateTime.now();
+    final tomorrow = DateTime(today.year, today.month, today.day + 1);
     final todayKey = ValueKey(
       'analysis-day-${DateTime(today.year, today.month, today.day).toIso8601String()}',
     );
+    expect(
+      find.byKey(ValueKey('analysis-day-${tomorrow.toIso8601String()}')),
+      findsNothing,
+    );
     await tester.ensureVisible(find.byKey(todayKey));
     await tester.pumpAndSettle();
+    final bar = tester.widget<Container>(
+      find.byKey(
+        ValueKey(
+          'analysis-bar-${DateTime(today.year, today.month, today.day).toIso8601String()}-2',
+        ),
+      ),
+    );
+    expect(bar.child, isA<SizedBox>());
+    expect(find.text('2セット'), findsWidgets);
     await tester.tap(find.byKey(todayKey));
     await tester.pumpAndSettle();
     expect(find.text('${today.month}月${today.day}日の記録'), findsOneWidget);
@@ -233,10 +249,12 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('よく使った器具'),
       200,
-      scrollable: find.descendant(
-        of: find.byKey(const ValueKey('analysis-list')),
-        matching: find.byType(Scrollable),
-      ).first,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('analysis-list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     expect(find.text('よく使った器具'), findsOneWidget);
     await tester.drag(
@@ -245,7 +263,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('合計 2セット・最大 25kg'), findsOneWidget);
-    expect(find.text('1日'), findsWidgets);
+    expect(find.text('2セット'), findsWidgets);
+    expect(find.text('筋トレ（セット数順）'), findsOneWidget);
     await tester.tap(find.text('履歴'));
     await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
@@ -254,6 +273,15 @@ void main() {
     final sessionTile = find.ancestor(
       of: sessionTitle,
       matching: find.byType(ListTile),
+    );
+    final sessionTileText = tester.widgetList<Text>(
+      find.descendant(of: sessionTile, matching: find.byType(Text)),
+    );
+    expect(
+      sessionTileText.any(
+        (text) => RegExp(r'\d{1,2}:\d{2}').hasMatch(text.data ?? ''),
+      ),
+      isFalse,
     );
     await tester.pumpAndSettle();
     await tester.tap(sessionTile);

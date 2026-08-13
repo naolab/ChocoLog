@@ -114,7 +114,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: 12),
                   if (data.currentRecord != null &&
                       data.currentRecord!.exercises.isNotEmpty) ...[
-                    _CurrentRecordCard(summary: data.currentRecord!),
+                    _TodayRecordCard(
+                      summary: data.currentRecord!,
+                      onChanged: _reload,
+                    ),
                     const SizedBox(height: 10),
                   ],
                   if (data.completedToday.isEmpty &&
@@ -123,7 +126,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const _EmptyTodayCard()
                   else
                     for (final summary in data.completedToday) ...[
-                      _TodaySessionCard(summary: summary, onChanged: _reload),
+                      _TodayRecordCard(summary: summary, onChanged: _reload),
                       const SizedBox(height: 10),
                     ],
                 ],
@@ -446,67 +449,83 @@ class _EquipmentCard extends StatelessWidget {
   }
 }
 
-class _CurrentRecordCard extends StatelessWidget {
-  const _CurrentRecordCard({required this.summary});
-
-  final WorkoutSessionSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final exercise in summary.exercises)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(exercise.equipmentName),
-                subtitle: Text(_exerciseLabel(exercise)),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TodaySessionCard extends StatelessWidget {
-  const _TodaySessionCard({required this.summary, required this.onChanged});
+class _TodayRecordCard extends StatelessWidget {
+  const _TodayRecordCard({required this.summary, required this.onChanged});
 
   final WorkoutSessionSummary summary;
   final Future<void> Function() onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final startedAt = summary.session.startedAt.toLocal();
     return Card(
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: () async {
           final changed = await context.push<bool>(
             '/reports/history/${summary.session.id}',
           );
           if (changed == true) await onChanged();
         },
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        title: Text(
-          '${_twoDigits(startedAt.hour)}:${_twoDigits(startedAt.minute)}　'
-          '${_summaryLabel(summary)}',
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(
-            summary.exercises
-                .map(
-                  (exercise) =>
-                      '${exercise.equipmentName}：${_exerciseLabel(exercise)}',
-                )
-                .join('\n'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    _summaryLabel(summary),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              const SizedBox(height: 12),
+              for (final exercise in summary.exercises)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: ChocoLogColors.softYellow,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Image.asset(
+                          'assets/equipment/${exercise.equipmentId}.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) =>
+                              const Icon(Icons.fitness_center),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              exercise.equipmentName,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _exerciseLabel(exercise),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: ChocoLogColors.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
-        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }
@@ -615,5 +634,3 @@ String _summaryLabel(WorkoutSessionSummary summary) {
   }
   return parts.join('・');
 }
-
-String _twoDigits(int value) => value.toString().padLeft(2, '0');
