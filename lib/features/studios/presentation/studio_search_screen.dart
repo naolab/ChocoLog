@@ -45,7 +45,11 @@ class _StudioSearchScreenState extends State<StudioSearchScreen> {
                 const Expanded(
                   child: Text(
                     '店舗情報は参考情報です',
-                    style: TextStyle(color: ChocoLogColors.muted, fontSize: 12),
+                    style: TextStyle(
+                      color: ChocoLogColors.muted,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 IconButton(

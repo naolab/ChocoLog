@@ -353,7 +353,9 @@ class _StepLayout extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: ChocoLogColors.muted,
-                  fontSize: 12,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.45,
                 ),
               ),
             ],

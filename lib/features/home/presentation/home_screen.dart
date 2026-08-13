@@ -92,7 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               crossAxisCount: 2,
                               mainAxisSpacing: 10,
                               crossAxisSpacing: 10,
-                              mainAxisExtent: 190,
+                              mainAxisExtent: 200,
                             ),
                         itemCount: visible.length,
                         itemBuilder: (context, index) {
@@ -321,7 +321,8 @@ class _StudioCard extends StatelessWidget {
                       'いつもの店舗',
                       style: TextStyle(
                         color: ChocoLogColors.muted,
-                        fontSize: 12,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -431,10 +432,11 @@ class _EquipmentCard extends StatelessWidget {
                   color: todayRecord == null
                       ? ChocoLogColors.muted
                       : ChocoLogColors.ink,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: todayRecord == null
-                      ? FontWeight.normal
-                      : FontWeight.w600,
+                      ? FontWeight.w500
+                      : FontWeight.w700,
+                  height: 1.3,
                 ),
               ),
             ],
