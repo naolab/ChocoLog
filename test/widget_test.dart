@@ -92,10 +92,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('この期間の記録はありません'), findsOneWidget);
 
-    await tester.tap(find.text('設定'));
+    await tester.tap(find.text('設定').last);
     await tester.pumpAndSettle();
     expect(find.text('週の目標回数'), findsOneWidget);
     expect(find.text('週間リマインダー'), findsOneWidget);
+    expect(find.text('重量単位'), findsNothing);
 
     await tester.tap(find.text('週2回'));
     await tester.pumpAndSettle();
@@ -106,6 +107,60 @@ void main() {
     await tester.tap(find.text('ホーム'));
     await tester.pumpAndSettle();
     expect(find.text('器具を選んで記録'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('通知時刻を日本語の3項目で表示できる', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({
+      'onboarding.completed': true,
+      'reminder.enabled': true,
+      'reminder.hour': 19,
+      'reminder.minute': 0,
+    });
+    final preferences = await OnboardingPreferences.load();
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(database)],
+        child: ChocoLogApp(onboardingPreferences: preferences),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('設定').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('通知時刻'), findsOneWidget);
+    expect(find.text('午前・午後'), findsOneWidget);
+    expect(find.text('午後'), findsOneWidget);
+    expect(find.text('時'), findsOneWidget);
+    expect(find.text('分'), findsOneWidget);
+    expect(find.textContaining('午後 7:00'), findsOneWidget);
+    expect(find.byType(TimePickerDialog), findsNothing);
+    expect(find.text('重量単位'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('保存方法について'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('保存方法について'));
+    await tester.pumpAndSettle();
+    final dialog = tester.widget<AlertDialog>(find.byType(AlertDialog));
+    expect(dialog.backgroundColor, isNull);
+    expect(
+      Theme.of(
+        tester.element(find.byType(AlertDialog)),
+      ).dialogTheme.backgroundColor,
+      const Color(0xFFFFFFFF),
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
