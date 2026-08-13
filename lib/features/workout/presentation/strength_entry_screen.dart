@@ -249,7 +249,7 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
         Wrap(
           spacing: 8,
           children: [
-            for (final reps in [10, 12, 15])
+            for (final reps in [10, 15, 20, 25])
               ActionChip(
                 label: Text('$reps 回'),
                 onPressed: () => setState(() => _repsController.text = '$reps'),

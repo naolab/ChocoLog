@@ -129,6 +129,30 @@ class WorkoutFlowController
     return record;
   }
 
+  Future<CardioRecordSnapshot> addManualCardio({
+    required String equipmentId,
+    required int durationMinutes,
+    double? distanceKm,
+    String? studioId,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final session = await _editableTodaySession(studioId: studioId);
+      final record = await _repository.addManualCardio(
+        sessionId: session.id,
+        equipmentId: equipmentId,
+        durationSeconds: durationMinutes * 60,
+        distanceKm: distanceKm,
+      );
+      await _repository.completeSession(session.id);
+      state = const AsyncData(null);
+      return record;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
   Future<CardioRecordSnapshot> pauseCardio(String recordId) =>
       _repository.pauseCardio(recordId);
 

@@ -415,6 +415,65 @@ class WorkoutRepository {
     });
   }
 
+  Future<CardioRecordSnapshot> addManualCardio({
+    required String sessionId,
+    required String equipmentId,
+    required int durationSeconds,
+    double? distanceKm,
+  }) async {
+    if (durationSeconds <= 0) {
+      throw ArgumentError.value(
+        durationSeconds,
+        'durationSeconds',
+        '1秒以上で入力してください',
+      );
+    }
+    if (distanceKm != null && distanceKm < 0) {
+      throw ArgumentError.value(distanceKm, 'distanceKm', '0以上で入力してください');
+    }
+    return _database.transaction(() async {
+      final session = await (_database.select(
+        _database.workoutSessions,
+      )..where((row) => row.id.equals(sessionId))).getSingleOrNull();
+      if (session == null || session.status != 'draft') {
+        throw StateError('進行中のセッションが見つかりません');
+      }
+      final equipment = await (_database.select(
+        _database.equipment,
+      )..where((row) => row.id.equals(equipmentId))).getSingleOrNull();
+      if (equipment == null || equipment.metricType != 'cardio') {
+        throw ArgumentError.value(equipmentId, 'equipmentId', '有酸素器具ではありません');
+      }
+      final latestRecord =
+          await (_database.select(_database.exerciseRecords)
+                ..where((row) => row.workoutSessionId.equals(sessionId))
+                ..orderBy([(row) => OrderingTerm.desc(row.sortOrder)])
+                ..limit(1))
+              .getSingleOrNull();
+      final now = _now();
+      final row = ExerciseRecordsCompanion.insert(
+        id: _idGenerator(),
+        workoutSessionId: sessionId,
+        equipmentId: equipmentId,
+        recordType: 'cardio',
+        startedAt: Value(now.subtract(Duration(seconds: durationSeconds))),
+        endedAt: Value(now),
+        timerStatus: const Value('completed'),
+        durationSeconds: Value(durationSeconds),
+        distanceKm: Value(distanceKm),
+        sortOrder: Value((latestRecord?.sortOrder ?? -1) + 1),
+        createdAt: Value(now),
+        updatedAt: Value(now),
+      );
+      await _database.into(_database.exerciseRecords).insert(row);
+      return _cardioFromRow(
+        await (_database.select(
+          _database.exerciseRecords,
+        )..where((item) => item.id.equals(row.id.value))).getSingle(),
+      );
+    });
+  }
+
   Future<CardioRecordSnapshot> pauseCardio(String recordId) async {
     final row = await _activeCardioRow(recordId);
     if (row.timerStatus != 'running') return _cardioFromRow(row);

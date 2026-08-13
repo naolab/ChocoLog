@@ -97,6 +97,8 @@ void main() {
     expect(find.text('週の目標回数'), findsOneWidget);
     expect(find.text('週間リマインダー'), findsOneWidget);
     expect(find.text('重量単位'), findsNothing);
+    expect(find.text('週の開始曜日'), findsNothing);
+    expect(find.text('未設定'), findsOneWidget);
 
     await tester.tap(find.text('週2回'));
     await tester.pumpAndSettle();

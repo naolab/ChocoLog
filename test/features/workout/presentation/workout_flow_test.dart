@@ -46,6 +46,11 @@ void main() {
     await tester.tap(find.text('チェストプレス'));
     await tester.pumpAndSettle();
     expect(find.text('前回の3セットをコピー'), findsOneWidget);
+    expect(find.text('10 回'), findsOneWidget);
+    expect(find.text('15 回'), findsOneWidget);
+    expect(find.text('20 回'), findsOneWidget);
+    expect(find.text('25 回'), findsOneWidget);
+    expect(find.text('12 回'), findsNothing);
     await tester.tap(find.text('このセットを追加'));
     await tester.pumpAndSettle();
     expect(await repository.getActiveSession(), isNull);
@@ -138,6 +143,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('トレーニング詳細'), findsOneWidget);
+    final detailDate = current.toLocal();
+    expect(
+      find.text('${detailDate.year}年${detailDate.month}月${detailDate.day}日'),
+      findsOneWidget,
+    );
     expect(find.text('チェストプレス'), findsOneWidget);
     expect(find.text('アブベンチ'), findsOneWidget);
     expect(find.textContaining('30kg × 10回'), findsOneWidget);
@@ -217,6 +227,49 @@ void main() {
     expect(find.text('今日の記録を完了'), findsNothing);
     expect(await repository.getActiveSession(), isNull);
     expect(await repository.getCompletedSessionSummaries(), hasLength(1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('有酸素運動を時間指定で手動保存できる', (tester) async {
+    SharedPreferences.setMockInitialValues({'onboarding.completed': true});
+    final preferences = await OnboardingPreferences.load();
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await EquipmentRepository(database).seedDefaults();
+    final repository = WorkoutRepository(database);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(database),
+          workoutRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: ChocoLogApp(onboardingPreferences: preferences),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('バイク'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('バイク'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('手動で記録'));
+    await tester.pumpAndSettle();
+
+    for (final label in ['10分', '20分', '30分', '45分']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    await tester.tap(find.text('30分'));
+    await tester.tap(find.text('この内容で記録'));
+    await tester.pumpAndSettle();
+
+    final sessions = await repository.getCompletedSessionSummaries();
+    expect(sessions, hasLength(1));
+    expect(sessions.single.exercises.single.equipmentName, 'バイク');
+    expect(sessions.single.exercises.single.durationSeconds, 30 * 60);
+    expect(await repository.getActiveSession(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

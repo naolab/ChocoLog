@@ -176,8 +176,7 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             children: [
               Text(
-                '${startedAt.year}年${startedAt.month}月${startedAt.day}日 '
-                '${_twoDigits(startedAt.hour)}:${_twoDigits(startedAt.minute)}',
+                '${startedAt.year}年${startedAt.month}月${startedAt.day}日',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 6),
