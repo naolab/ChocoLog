@@ -92,7 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               crossAxisCount: 2,
                               mainAxisSpacing: 10,
                               crossAxisSpacing: 10,
-                              mainAxisExtent: 132,
+                              mainAxisExtent: 190,
                             ),
                         itemCount: visible.length,
                         itemBuilder: (context, index) {
@@ -386,25 +386,36 @@ class _EquipmentCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (loading)
-                const SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 3),
-                )
-              else
-                Row(
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Icon(
-                      isCardio ? Icons.directions_run : Icons.fitness_center,
-                      size: 28,
+                    Image.asset(
+                      'assets/equipment/${equipment.id}.png',
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium,
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        isCardio ? Icons.directions_run : Icons.fitness_center,
+                        size: 42,
+                      ),
                     ),
-                    const Spacer(),
+                    if (loading)
+                      const Center(
+                        child: SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(strokeWidth: 3),
+                        ),
+                      ),
                     if (todayRecord != null)
-                      const Icon(Icons.check_circle, size: 22),
+                      const Align(
+                        alignment: Alignment.topRight,
+                        child: Icon(Icons.check_circle, size: 22),
+                      ),
                   ],
                 ),
-              const Spacer(),
+              ),
+              const SizedBox(height: 6),
               Text(
                 equipment.name,
                 maxLines: 2,
