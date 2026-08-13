@@ -18,10 +18,21 @@ enum _ActivityMetric { strength, cardio }
 
 const _chartColors = [
   ChocoLogColors.yellow,
-  Color(0xFF8FD8E8),
-  Color(0xFFFFA982),
-  Color(0xFFA9D48C),
-  Color(0xFFC4B5E8),
+  Color(0xFF4DB6C8),
+  Color(0xFFFF8A65),
+  Color(0xFF7CB86C),
+  Color(0xFF9B86D1),
+  Color(0xFFEF6C9B),
+  Color(0xFF5C8FD6),
+  Color(0xFFD6A547),
+  Color(0xFF49A889),
+  Color(0xFFBE6A5A),
+  Color(0xFF7A9E45),
+  Color(0xFF5C6BC0),
+  Color(0xFFD16F3D),
+  Color(0xFF3E9BB3),
+  Color(0xFFA563B8),
+  Color(0xFFB58B38),
 ];
 
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -344,6 +355,19 @@ class _ActivityChart extends StatelessWidget {
         : points
               .where((point) => _sameDay(point.date, selectedDate!))
               .firstOrNull;
+    final visibleEquipment = <String, _DailyEquipmentValue>{};
+    for (final point in points) {
+      for (final item in point.equipment) {
+        visibleEquipment[item.id] = item;
+      }
+    }
+    Color colorForEquipment(String equipmentId) {
+      final index = report.equipment.indexWhere(
+        (item) => item.id == equipmentId,
+      );
+      return _chartColors[(index < 0 ? 0 : index) % _chartColors.length];
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
@@ -376,6 +400,20 @@ class _ActivityChart extends StatelessWidget {
                 context,
               ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
             ),
+            if (visibleEquipment.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  for (final item in visibleEquipment.values)
+                    _ChartLegendItem(
+                      name: item.name,
+                      color: colorForEquipment(item.id),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 18),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -399,16 +437,13 @@ class _ActivityChart extends StatelessWidget {
                           unit: metric == _ActivityMetric.strength
                               ? 'セット'
                               : '分',
-                          colorForEquipment: (equipmentId) {
-                            final index = report.equipment.indexWhere(
-                              (item) => item.id == equipmentId,
-                            );
-                            return _chartColors[(index < 0 ? 0 : index) %
-                                _chartColors.length];
-                          },
+                          colorForEquipment: colorForEquipment,
                           selected:
                               selectedDate != null &&
                               _sameDay(point.date, selectedDate!),
+                          dimmed:
+                              selectedDate != null &&
+                              !_sameDay(point.date, selectedDate!),
                           onTap: () => onDateSelected(point.date),
                         ),
                       ),
@@ -427,6 +462,30 @@ class _ActivityChart extends StatelessWidget {
   }
 }
 
+class _ChartLegendItem extends StatelessWidget {
+  const _ChartLegendItem({required this.name, required this.color});
+
+  final String name;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      key: ValueKey('chart-legend-$name'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(name, style: Theme.of(context).textTheme.labelSmall),
+      ],
+    );
+  }
+}
+
 class _ChartBar extends StatelessWidget {
   const _ChartBar({
     required this.point,
@@ -434,6 +493,7 @@ class _ChartBar extends StatelessWidget {
     required this.unit,
     required this.colorForEquipment,
     required this.selected,
+    required this.dimmed,
     required this.onTap,
   });
 
@@ -442,6 +502,7 @@ class _ChartBar extends StatelessWidget {
   final String unit;
   final Color Function(String equipmentId) colorForEquipment;
   final bool selected;
+  final bool dimmed;
   final VoidCallback onTap;
 
   @override
@@ -461,44 +522,59 @@ class _ChartBar extends StatelessWidget {
                 style: Theme.of(context).textTheme.labelSmall,
               ),
             const SizedBox(height: 4),
-            Container(
-              key: ValueKey(
-                'analysis-bar-${point.date.toIso8601String()}-${point.total}',
-              ),
-              height: point.total == 0 ? 6 : 98 * point.total / maximum + 10,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: point.total == 0
-                    ? ChocoLogColors.border
-                    : ChocoLogColors.surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(7),
+            AnimatedOpacity(
+              key: ValueKey('analysis-opacity-${point.date.toIso8601String()}'),
+              opacity: dimmed ? 0.38 : 1,
+              duration: const Duration(milliseconds: 180),
+              child: Container(
+                key: ValueKey(
+                  'analysis-bar-${point.date.toIso8601String()}-${point.total}',
                 ),
-                border: Border.all(
-                  color: selected ? ChocoLogColors.ink : Colors.transparent,
-                  width: 2,
+                height: point.total == 0 ? 6 : 98 * point.total / maximum + 10,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: point.total == 0
+                      ? ChocoLogColors.border
+                      : ChocoLogColors.surface,
+                  borderRadius: BorderRadius.circular(7),
                 ),
-              ),
-              child: point.total == 0
-                  ? null
-                  : SizedBox.expand(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (final item in point.equipment)
-                            Expanded(
-                              flex: item.value,
-                              child: ColoredBox(
-                                color: colorForEquipment(item.id),
+                child: point.total == 0
+                    ? null
+                    : SizedBox.expand(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final item in point.equipment)
+                              Expanded(
+                                flex: item.value,
+                                child: ColoredBox(
+                                  color: colorForEquipment(item.id),
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+              ),
             ),
             const SizedBox(height: 6),
-            Text(point.label, style: Theme.of(context).textTheme.labelSmall),
+            AnimatedContainer(
+              key: ValueKey(
+                'analysis-date-label-${point.date.toIso8601String()}',
+              ),
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: selected
+                    ? ChocoLogColors.softYellow
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                point.label,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ),
           ],
         ),
       ),

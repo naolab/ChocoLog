@@ -487,14 +487,9 @@ class _TodayRecordCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Row(
                     children: [
-                      Container(
+                      SizedBox(
                         width: 54,
                         height: 54,
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: ChocoLogColors.softYellow,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
                         child: Image.asset(
                           'assets/equipment/${exercise.equipmentId}.png',
                           fit: BoxFit.contain,
