@@ -377,9 +377,7 @@ class _EquipmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCardio = equipment.metricType == 'cardio';
     return Card(
-      color: todayRecord == null
-          ? null
-          : ChocoLogColors.yellow.withValues(alpha: 0.28),
+      color: todayRecord == null ? null : ChocoLogColors.softYellow,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: enabled ? onTap : null,

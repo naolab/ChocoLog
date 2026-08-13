@@ -110,7 +110,7 @@ class _StudioSearchScreenState extends State<StudioSearchScreen> {
                         ),
                         onTap: widget.selectable
                             ? () => Navigator.pop(context, studio)
-                            : null,
+                            : () => _showStudioDetails(studio, favorite),
                         trailing: IconButton(
                           tooltip: favorite ? 'お気に入りを解除' : 'よく行く店舗に追加',
                           icon: Icon(
@@ -151,6 +151,92 @@ class _StudioSearchScreenState extends State<StudioSearchScreen> {
     setState(() {
       favorite ? _favoriteIds.add(id) : _favoriteIds.remove(id);
     });
+  }
+
+  Future<void> _showStudioDetails(StudioItem studio, bool favorite) async {
+    final nextFavorite = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) =>
+          StudioFavoriteSheet(studio: studio, favorite: favorite),
+    );
+    if (nextFavorite == null || nextFavorite == favorite) return;
+    await _toggleFavorite(studio.id, nextFavorite);
+  }
+}
+
+class StudioFavoriteSheet extends StatelessWidget {
+  const StudioFavoriteSheet({
+    super.key,
+    required this.studio,
+    required this.favorite,
+  });
+
+  final StudioItem studio;
+  final bool favorite;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          4,
+          24,
+          24 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CircleAvatar(
+                  backgroundColor: ChocoLogColors.softYellow,
+                  child: Icon(
+                    Icons.location_on_outlined,
+                    color: ChocoLogColors.ink,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    studio.name,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+              ],
+            ),
+            if (studio.address.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              Text(studio.address),
+            ],
+            if (studio.access.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                studio.access,
+                style: const TextStyle(color: ChocoLogColors.muted),
+              ),
+            ],
+            const SizedBox(height: 24),
+            if (favorite)
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context, false),
+                icon: const Icon(Icons.star_outline),
+                label: const Text('よく行く店舗から解除'),
+              )
+            else
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.star),
+                label: const Text('よく行く店舗に設定'),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

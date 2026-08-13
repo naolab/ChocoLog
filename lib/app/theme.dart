@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 abstract final class ChocoLogColors {
   static const yellow = Color(0xFFFFE62B);
-  static const paleYellow = Color(0xFFFFF9D6);
+  static const softYellow = Color(0xFFFFF8C4);
   static const canvas = Color(0xFFF5F5F5);
   static const surface = Color(0xFFFFFFFF);
   static const ink = Color(0xFF102635);
@@ -22,7 +22,7 @@ abstract final class ChocoLogTheme {
         ).copyWith(
           primary: ChocoLogColors.yellow,
           onPrimary: ChocoLogColors.ink,
-          primaryContainer: ChocoLogColors.paleYellow,
+          primaryContainer: ChocoLogColors.softYellow,
           onPrimaryContainer: ChocoLogColors.ink,
           secondary: ChocoLogColors.ink,
           onSecondary: ChocoLogColors.surface,
@@ -230,7 +230,7 @@ abstract final class ChocoLogTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: ChocoLogColors.surface,
-        selectedColor: ChocoLogColors.paleYellow,
+        selectedColor: ChocoLogColors.softYellow,
         side: const BorderSide(color: ChocoLogColors.border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         labelStyle: textTheme.labelMedium?.copyWith(color: ChocoLogColors.ink),
@@ -273,7 +273,7 @@ abstract final class ChocoLogTheme {
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.selected)
-                ? ChocoLogColors.paleYellow
+                ? ChocoLogColors.softYellow
                 : ChocoLogColors.surface,
           ),
           foregroundColor: const WidgetStatePropertyAll(ChocoLogColors.ink),
