@@ -125,6 +125,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                Text('運動した日', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 10),
+                _ActivityChart(report: report),
+                const SizedBox(height: 24),
                 Text('よく使った器具', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 10),
                 for (final (index, equipment) in report.equipment.indexed)
@@ -199,6 +203,94 @@ class _Metric extends StatelessWidget {
           const SizedBox(height: 6),
           Text(value, style: Theme.of(context).textTheme.titleMedium),
         ],
+      ),
+    );
+  }
+}
+
+class _ActivityChart extends StatelessWidget {
+  const _ActivityChart({required this.report});
+
+  final _ReportData report;
+
+  @override
+  Widget build(BuildContext context) {
+    final points = report.chartPoints;
+    final maximum = points.fold(1, (value, point) {
+      return point.count > value ? point.count : value;
+    });
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${report.activeDayCount}日運動しました',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              report.period == _ReportPeriod.week
+                  ? '棒の高さは1日の記録回数です'
+                  : '棒の高さは5日間の記録回数です',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              height: 156,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (final point in points)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (point.count > 0)
+                              Text(
+                                '${point.count}',
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
+                            const SizedBox(height: 4),
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              height: point.count == 0
+                                  ? 6
+                                  : 92 * point.count / maximum + 12,
+                              decoration: BoxDecoration(
+                                color: point.count == 0
+                                    ? ChocoLogColors.border
+                                    : ChocoLogColors.yellow,
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(8),
+                                ),
+                                border: Border.all(
+                                  color: point.count == 0
+                                      ? ChocoLogColors.border
+                                      : ChocoLogColors.ink,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              point.label,
+                              maxLines: 1,
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -292,6 +384,37 @@ class _ReportData {
       sessions.fold(0, (sum, item) => sum + item.totalSetCount);
   int get cardioMinutes =>
       sessions.fold(0, (sum, item) => sum + item.totalCardioSeconds) ~/ 60;
+  int get activeDayCount =>
+      chartPoints.where((point) => point.count > 0).length;
+  List<_ChartPoint> get chartPoints {
+    final sessionCounts = <DateTime, int>{};
+    for (final summary in sessions) {
+      final local = summary.session.startedAt.toLocal();
+      final date = DateTime(local.year, local.month, local.day);
+      sessionCounts.update(date, (count) => count + 1, ifAbsent: () => 1);
+    }
+    if (period == _ReportPeriod.week) {
+      const labels = ['月', '火', '水', '木', '金', '土', '日'];
+      return [
+        for (var index = 0; index < 7; index++)
+          _ChartPoint(
+            label: labels[index],
+            count: sessionCounts[start.add(Duration(days: index))] ?? 0,
+          ),
+      ];
+    }
+    final points = <_ChartPoint>[];
+    for (var day = 1; day <= end.day; day += 5) {
+      final rangeEnd = (day + 4).clamp(1, end.day);
+      var count = 0;
+      for (var current = day; current <= rangeEnd; current++) {
+        count += sessionCounts[DateTime(start.year, start.month, current)] ?? 0;
+      }
+      points.add(_ChartPoint(label: '$day', count: count));
+    }
+    return points;
+  }
+
   String get periodLabel => period == _ReportPeriod.week
       ? '${start.month}月${start.day}日〜${end.month}月${end.day}日'
       : '${start.year}年${start.month}月';
@@ -335,6 +458,13 @@ class _ReportData {
       equipment: equipment,
     );
   }
+}
+
+class _ChartPoint {
+  const _ChartPoint({required this.label, required this.count});
+
+  final String label;
+  final int count;
 }
 
 class _EquipmentReport {
