@@ -18,17 +18,17 @@ enum _ActivityMetric { strength, cardio }
 
 const _chartColors = [
   ChocoLogColors.yellow,
-  Color(0xFF0072B2),
-  Color(0xFF009E73),
-  Color(0xFFCC79A7),
-  Color(0xFFD55E00),
-  Color(0xFF56B4E9),
-  Color(0xFFE69F00),
-  Color(0xFF332288),
-  Color(0xFF44AA99),
-  Color(0xFF999933),
-  Color(0xFFCC6677),
-  Color(0xFFAA4499),
+  Color(0xFF27A8E8),
+  Color(0xFF24B883),
+  Color(0xFFEF73AC),
+  Color(0xFFF26A4F),
+  Color(0xFF5CC9F5),
+  Color(0xFFF5B82E),
+  Color(0xFF7969D8),
+  Color(0xFF4BC5AE),
+  Color(0xFFA5B943),
+  Color(0xFFE48591),
+  Color(0xFFC66BC4),
 ];
 
 /// The catalog order is also the vertical stacking order in the daily chart.
@@ -643,7 +643,7 @@ class _SelectedDayDetails extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         if (point.equipment.isEmpty)
-          const Text('この種類の記録はありません')
+          const Text('この日の記録はありません')
         else
           for (final item in point.equipment)
             Padding(

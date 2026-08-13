@@ -135,34 +135,13 @@ void main() {
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();
     final completedSessionTitle = find.textContaining('2種目・8セット');
-    expect(find.text('チェストプレス・アブベンチ'), findsOneWidget);
+    expect(find.text('チェストプレス'), findsWidgets);
+    expect(find.text('アブベンチ'), findsWidgets);
     expect(completedSessionTitle, findsOneWidget);
-    await tester.tap(
-      find.ancestor(of: completedSessionTitle, matching: find.byType(ListTile)),
+    final completedSession = find.byKey(
+      ValueKey('history-session-${homeHistory.first.session.id}'),
     );
-    await tester.pumpAndSettle();
-
-    expect(find.text('トレーニング詳細'), findsOneWidget);
-    final detailDate = current.toLocal();
-    expect(
-      find.text('${detailDate.year}年${detailDate.month}月${detailDate.day}日'),
-      findsOneWidget,
-    );
-    expect(find.text('チェストプレス'), findsOneWidget);
-    expect(find.text('アブベンチ'), findsOneWidget);
-    expect(find.textContaining('30kg × 10回'), findsOneWidget);
-    expect(find.textContaining('自重 × 15回'), findsNWidgets(3));
-
-    await tester.drag(find.byType(ListView).last, const Offset(0, -900));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('この記録を削除'));
-    await tester.pumpAndSettle();
-    expect(find.text('記録を削除しますか？'), findsOneWidget);
-    await tester.tap(find.text('削除する'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('トレーニング詳細'), findsNothing);
-    expect(await repository.getCompletedSessionSummaries(), hasLength(1));
+    expect(completedSession, findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

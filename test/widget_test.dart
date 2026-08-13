@@ -286,21 +286,26 @@ void main() {
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();
     final sessionTitle = find.textContaining('1種目・2セット');
-    final sessionTile = find.ancestor(
+    final sessionCard = find.ancestor(
       of: sessionTitle,
-      matching: find.byType(ListTile),
+      matching: find.byType(Card),
     );
-    final sessionTileText = tester.widgetList<Text>(
-      find.descendant(of: sessionTile, matching: find.byType(Text)),
+    final sessionCardText = tester.widgetList<Text>(
+      find.descendant(of: sessionCard, matching: find.byType(Text)),
     );
     expect(
-      sessionTileText.any(
+      sessionCardText.any(
         (text) => RegExp(r'\d{1,2}:\d{2}').hasMatch(text.data ?? ''),
       ),
       isFalse,
     );
     await tester.pumpAndSettle();
-    await tester.tap(sessionTile);
+    final historySession = find.descendant(
+      of: sessionCard,
+      matching: find.byKey(ValueKey('history-session-${previous.id}')),
+    );
+    await tester.ensureVisible(historySession);
+    await tester.tap(historySession);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('このメニューを複製'));
     await tester.pumpAndSettle();
