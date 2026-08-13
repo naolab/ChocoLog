@@ -243,7 +243,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (context) => const AlertDialog(
         title: Text('非公式アプリについて'),
         content: Text(
-          'ChocoLogはchocoZAPの公式・公認アプリではありません。器具や店舗の情報は、現地または公式サービスでも確認してください。',
+          'chocoLOGはchocoZAPの公式・公認アプリではありません。器具や店舗の情報は、現地または公式サービスでも確認してください。',
         ),
       ),
     );

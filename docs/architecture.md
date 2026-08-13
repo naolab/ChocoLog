@@ -1,4 +1,4 @@
-# ChocoLog Flutterアーキテクチャ（Draft v0.1）
+# chocoLOG Flutterアーキテクチャ（Draft v0.1）
 
 - 作成日: 2026-08-11
 - 対象: iOS MVP、将来のAndroid対応

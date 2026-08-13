@@ -25,7 +25,7 @@ class _ChocoLogAppState extends State<ChocoLogApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'ChocoLog',
+      title: 'chocoLOG',
       debugShowCheckedModeBanner: false,
       theme: ChocoLogTheme.light,
       routerConfig: _router,
