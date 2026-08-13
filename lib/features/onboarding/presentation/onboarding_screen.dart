@@ -354,7 +354,7 @@ class _StepLayout extends StatelessWidget {
                 style: const TextStyle(
                   color: ChocoLogColors.muted,
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w700,
                   height: 1.45,
                 ),
               ),

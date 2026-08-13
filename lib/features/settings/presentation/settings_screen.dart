@@ -55,22 +55,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: () => context.push('/settings/studios'),
                 ),
                 const Divider(height: 1),
-                ListTile(
-                  title: const Text('週の目標回数'),
-                  subtitle: const Text('ホームと週レポートに反映されます'),
-                  trailing: DropdownButton<int>(
-                    value: _weeklyTarget,
-                    items: [
-                      for (final count in [1, 2, 3, 4, 5, 6, 7])
-                        DropdownMenuItem(value: count, child: Text('週$count回')),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '週の目標回数',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'ホームと週レポートに反映されます',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: ChocoLogColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int>(
+                        initialValue: _weeklyTarget,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: '目標回数',
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                        items: [
+                          for (final count in [1, 2, 3, 4, 5, 6, 7])
+                            DropdownMenuItem(
+                              value: count,
+                              child: Text('週$count回'),
+                            ),
+                        ],
+                        onChanged: _saving
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+                                setState(() => _weeklyTarget = value);
+                                _save();
+                              },
+                      ),
                     ],
-                    onChanged: _saving
-                        ? null
-                        : (value) {
-                            if (value == null) return;
-                            setState(() => _weeklyTarget = value);
-                            _save();
-                          },
                   ),
                 ),
                 const Divider(height: 1),

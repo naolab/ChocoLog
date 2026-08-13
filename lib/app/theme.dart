@@ -88,18 +88,18 @@ abstract final class ChocoLogTheme {
         height: 1.4,
       ),
       bodyLarge: baseTextTheme.bodyLarge?.copyWith(
-        fontSize: 17,
-        fontWeight: FontWeight.w500,
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
         height: 1.5,
       ),
       bodyMedium: baseTextTheme.bodyMedium?.copyWith(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
         height: 1.45,
       ),
       bodySmall: baseTextTheme.bodySmall?.copyWith(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
         height: 1.4,
       ),
       labelLarge: baseTextTheme.labelLarge?.copyWith(
@@ -108,13 +108,13 @@ abstract final class ChocoLogTheme {
         height: 1.3,
       ),
       labelMedium: baseTextTheme.labelMedium?.copyWith(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
+        fontSize: 15,
+        fontWeight: FontWeight.w800,
         height: 1.3,
       ),
       labelSmall: baseTextTheme.labelSmall?.copyWith(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
         height: 1.3,
       ),
     );
@@ -242,6 +242,7 @@ abstract final class ChocoLogTheme {
         ),
         subtitleTextStyle: textTheme.bodySmall?.copyWith(
           color: ChocoLogColors.muted,
+          fontWeight: FontWeight.w700,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -251,8 +252,8 @@ abstract final class ChocoLogTheme {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
             color: selected ? ChocoLogColors.ink : ChocoLogColors.muted,
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {

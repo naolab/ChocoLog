@@ -48,7 +48,7 @@ class _StudioSearchScreenState extends State<StudioSearchScreen> {
                     style: TextStyle(
                       color: ChocoLogColors.muted,
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
