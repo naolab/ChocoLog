@@ -197,6 +197,13 @@ void main() {
     expect(find.textContaining('チェストプレス'), findsWidgets);
     await tester.tap(find.byType(NavigationDestination).at(1));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('分析'));
+    await tester.pumpAndSettle();
+    expect(find.text('運動した日'), findsOneWidget);
+    expect(find.text('1日運動しました'), findsOneWidget);
+    expect(find.text('棒の高さは1日の記録回数です'), findsOneWidget);
+    await tester.tap(find.text('履歴'));
+    await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();
     final sessionTitle = find.textContaining('1種目・2セット');
