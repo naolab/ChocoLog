@@ -1,4 +1,5 @@
 import 'package:chocolog/app/theme.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +50,7 @@ class _StudioSelectionScreenState extends ConsumerState<StudioSelectionScreen> {
                 future: _favorites,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: ChocoLogLoadingIndicator());
                   }
                   if (snapshot.hasError || snapshot.requireData.isEmpty) {
                     return const Center(

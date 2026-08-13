@@ -1,4 +1,5 @@
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
 import 'package:chocolog/features/equipment/presentation/equipment_image.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
@@ -58,7 +59,7 @@ class _EquipmentSelectionScreenState
             const SizedBox(height: 16),
             Expanded(
               child: equipment.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: ChocoLogLoadingIndicator()),
                 error: (error, stackTrace) =>
                     const Center(child: Text('器具一覧を読み込めませんでした')),
                 data: (items) {

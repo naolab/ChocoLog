@@ -1,4 +1,5 @@
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +34,7 @@ class _WorkoutSessionScreenState extends ConsumerState<WorkoutSessionScreen> {
         future: _summary,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: ChocoLogLoadingIndicator());
           }
           if (snapshot.hasError) return _RetryView(onRetry: _reload);
           final summary = snapshot.requireData;
@@ -129,7 +130,7 @@ class _WorkoutReviewScreenState extends ConsumerState<WorkoutReviewScreen> {
         future: _summary,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: ChocoLogLoadingIndicator());
           }
           if (snapshot.hasError) {
             return _RetryView(
@@ -221,7 +222,7 @@ class WorkoutCompleteScreen extends ConsumerWidget {
             .getSessionSummary(sessionId),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: ChocoLogLoadingIndicator());
           }
           if (snapshot.hasError) {
             return const Center(child: Text('結果を読み込めませんでした'));

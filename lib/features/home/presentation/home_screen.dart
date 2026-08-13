@@ -1,5 +1,6 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
@@ -38,11 +39,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           future: _data,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: ChocoLogLoadingIndicator());
             }
             if (snapshot.hasError) return _HomeError(onRetry: _reload);
             final data = snapshot.requireData;
-            return RefreshIndicator(
+            return ChocoLogRefreshIndicator(
               onRefresh: _reload,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -69,7 +70,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   equipment.when(
                     loading: () => const Padding(
                       padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
+                      child: Center(child: ChocoLogLoadingIndicator()),
                     ),
                     error: (error, stackTrace) => const _EquipmentError(),
                     data: (items) {
@@ -405,7 +406,7 @@ class _EquipmentCard extends StatelessWidget {
                         child: SizedBox(
                           width: 28,
                           height: 28,
-                          child: CircularProgressIndicator(strokeWidth: 3),
+                          child: ChocoLogLoadingIndicator(size: 6),
                         ),
                       ),
                     if (todayRecord != null)

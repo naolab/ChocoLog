@@ -1,4 +1,5 @@
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
@@ -90,7 +91,7 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(_equipment?.name ?? '記録')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: ChocoLogLoadingIndicator())
           : _loadError != null
           ? Center(
               child: Column(

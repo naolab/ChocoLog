@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
 import 'package:chocolog/features/workout/data/cardio_live_activity_service.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
@@ -56,7 +57,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(_equipment?.name ?? '有酸素運動')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: ChocoLogLoadingIndicator())
           : _error != null
           ? _ErrorView(message: _error!, onRetry: _load)
           : Padding(
