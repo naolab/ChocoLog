@@ -322,7 +322,7 @@ class _StudioCard extends StatelessWidget {
                       style: TextStyle(
                         color: ChocoLogColors.muted,
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -432,10 +432,10 @@ class _EquipmentCard extends StatelessWidget {
                   color: todayRecord == null
                       ? ChocoLogColors.muted
                       : ChocoLogColors.ink,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: todayRecord == null
-                      ? FontWeight.w500
-                      : FontWeight.w700,
+                      ? FontWeight.w700
+                      : FontWeight.w800,
                   height: 1.3,
                 ),
               ),
