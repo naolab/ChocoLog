@@ -441,7 +441,6 @@ class _SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final startedAt = summary.session.startedAt.toLocal();
     final equipmentNames = summary.exercises
         .map((exercise) => exercise.equipmentName)
         .join('・');
@@ -458,10 +457,7 @@ class _SessionCard extends StatelessWidget {
           equipmentId: summary.exercises.first.equipmentId,
           size: 58,
         ),
-        title: Text(
-          '${_twoDigits(startedAt.hour)}:${_twoDigits(startedAt.minute)}　'
-          '${_sessionTotalLabel(summary)}',
-        ),
+        title: Text(_sessionTotalLabel(summary)),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Text(equipmentNames),
@@ -539,8 +535,6 @@ String _setLabel(WorkoutExerciseSummary exercise, ExerciseSetValue set) {
       : '${set.weightKg}kg';
   return '$metric × ${set.reps}回';
 }
-
-String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
 String _sessionTotalLabel(WorkoutSessionSummary summary) {
   final parts = ['${summary.exercises.length}種目'];

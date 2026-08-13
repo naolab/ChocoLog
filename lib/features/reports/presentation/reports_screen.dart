@@ -158,14 +158,41 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 const SizedBox(height: 24),
                 Text('よく使った器具', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 10),
-                for (final (index, equipment) in report.equipment.indexed)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _EquipmentCard(
-                      rank: index + 1,
-                      equipment: equipment,
-                    ),
+                if (report.strengthEquipment.isNotEmpty) ...[
+                  Text(
+                    '筋トレ（セット数順）',
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
+                  const SizedBox(height: 8),
+                  for (final (index, equipment)
+                      in report.strengthEquipment.indexed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _EquipmentCard(
+                        rank: index + 1,
+                        equipment: equipment,
+                        trailing: '${equipment.totalSets}セット',
+                      ),
+                    ),
+                ],
+                if (report.cardioEquipment.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '有酸素（時間順）',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  for (final (index, equipment)
+                      in report.cardioEquipment.indexed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _EquipmentCard(
+                        rank: index + 1,
+                        equipment: equipment,
+                        trailing: '${equipment.cardioMinutes}分',
+                      ),
+                    ),
+                ],
               ],
             ],
           ),
@@ -232,10 +259,10 @@ class _GoalStatus extends StatelessWidget {
         ? weeklyAchieved
               ? '今週の目標を達成！'
               : '目標まであと${weeklyTarget - report.activeDayCount}回'
-        : '$achievedWeeks週で目標を達成';
+        : '週目標を達成した週 $achievedWeeks / ${report.weekCount}週';
     final detail = report.period == _ReportPeriod.week
         ? '週$weeklyTarget回の目標'
-        : '今月の${report.weekCount}週間・週$weeklyTarget回の目標';
+        : '今月ここまで・週$weeklyTarget回の目標';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -369,6 +396,9 @@ class _ActivityChart extends StatelessWidget {
                         child: _ChartBar(
                           point: point,
                           maximum: maximum,
+                          unit: metric == _ActivityMetric.strength
+                              ? 'セット'
+                              : '分',
                           colorForEquipment: (equipmentId) {
                             final index = report.equipment.indexWhere(
                               (item) => item.id == equipmentId,
@@ -401,6 +431,7 @@ class _ChartBar extends StatelessWidget {
   const _ChartBar({
     required this.point,
     required this.maximum,
+    required this.unit,
     required this.colorForEquipment,
     required this.selected,
     required this.onTap,
@@ -408,6 +439,7 @@ class _ChartBar extends StatelessWidget {
 
   final _ChartPoint point;
   final int maximum;
+  final String unit;
   final Color Function(String equipmentId) colorForEquipment;
   final bool selected;
   final VoidCallback onTap;
@@ -425,11 +457,14 @@ class _ChartBar extends StatelessWidget {
           children: [
             if (point.total > 0)
               Text(
-                '${point.total}',
+                '${point.total}$unit',
                 style: Theme.of(context).textTheme.labelSmall,
               ),
             const SizedBox(height: 4),
             Container(
+              key: ValueKey(
+                'analysis-bar-${point.date.toIso8601String()}-${point.total}',
+              ),
               height: point.total == 0 ? 6 : 98 * point.total / maximum + 10,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
@@ -446,17 +481,20 @@ class _ChartBar extends StatelessWidget {
               ),
               child: point.total == 0
                   ? null
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        for (final item in point.equipment)
-                          Expanded(
-                            flex: item.value,
-                            child: ColoredBox(
-                              color: colorForEquipment(item.id),
+                  : SizedBox.expand(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final item in point.equipment)
+                            Expanded(
+                              flex: item.value,
+                              child: ColoredBox(
+                                color: colorForEquipment(item.id),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
             ),
             const SizedBox(height: 6),
@@ -509,10 +547,15 @@ class _SelectedDayDetails extends StatelessWidget {
 }
 
 class _EquipmentCard extends StatelessWidget {
-  const _EquipmentCard({required this.rank, required this.equipment});
+  const _EquipmentCard({
+    required this.rank,
+    required this.equipment,
+    required this.trailing,
+  });
 
   final int rank;
   final _EquipmentReport equipment;
+  final String trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -536,7 +579,7 @@ class _EquipmentCard extends StatelessWidget {
         ),
         title: Text(equipment.name),
         subtitle: Text(equipment.performanceLabel),
-        trailing: Text('${equipment.activeDayCount}日'),
+        trailing: Text(trailing),
       ),
     );
   }
@@ -592,6 +635,13 @@ class _ReportData {
   final List<WorkoutSessionSummary> sessions;
   final List<_EquipmentReport> equipment;
 
+  List<_EquipmentReport> get strengthEquipment =>
+      equipment.where((item) => !item.isCardio).toList()
+        ..sort((a, b) => b.totalSets.compareTo(a.totalSets));
+  List<_EquipmentReport> get cardioEquipment =>
+      equipment.where((item) => item.isCardio).toList()
+        ..sort((a, b) => b.cardioSeconds.compareTo(a.cardioSeconds));
+
   int get totalSets =>
       sessions.fold(0, (sum, item) => sum + item.totalSetCount);
   int get cardioMinutes =>
@@ -600,14 +650,24 @@ class _ReportData {
       .map((summary) => _dateOnly(summary.session.startedAt.toLocal()))
       .toSet()
       .length;
-  int get weekCount => ((end.day + 6) / 7).floor();
+  int get weekCount {
+    final monthStart = DateTime(end.year, end.month);
+    final firstWeekStart = monthStart.subtract(
+      Duration(days: monthStart.weekday - 1),
+    );
+    return end.difference(firstWeekStart).inDays ~/ 7 + 1;
+  }
+
   int achievedWeekCount(int weeklyTarget) {
     final activeDates = sessions
         .map((summary) => _dateOnly(summary.session.startedAt.toLocal()))
         .toSet();
     var count = 0;
+    final monthStart = DateTime(end.year, end.month);
     for (
-      var weekStart = start;
+      var weekStart = monthStart.subtract(
+        Duration(days: monthStart.weekday - 1),
+      );
       !weekStart.isAfter(end);
       weekStart = weekStart.add(const Duration(days: 7))
     ) {
@@ -672,25 +732,18 @@ class _ReportData {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final start = period == _ReportPeriod.week
-        ? today.subtract(Duration(days: today.weekday - 1))
+        ? today.subtract(const Duration(days: 6))
         : DateTime(today.year, today.month);
-    final end = period == _ReportPeriod.week
-        ? start.add(const Duration(days: 6))
-        : DateTime(today.year, today.month + 1, 0);
+    final end = today;
     final sessions = history.where((summary) {
       final local = summary.session.startedAt.toLocal();
       final date = DateTime(local.year, local.month, local.day);
       return !date.isBefore(start) && !date.isAfter(end);
     }).toList();
     final byEquipment = <String, List<WorkoutExerciseSummary>>{};
-    final equipmentDates = <String, Set<DateTime>>{};
     for (final session in sessions) {
-      final sessionDate = _dateOnly(session.session.startedAt.toLocal());
       for (final exercise in session.exercises) {
         byEquipment.putIfAbsent(exercise.equipmentId, () => []).add(exercise);
-        equipmentDates
-            .putIfAbsent(exercise.equipmentId, () => <DateTime>{})
-            .add(sessionDate);
       }
     }
     final equipment = [
@@ -699,9 +752,8 @@ class _ReportData {
           id: entry.key,
           name: entry.value.first.equipmentName,
           records: entry.value,
-          activeDayCount: equipmentDates[entry.key]!.length,
         ),
-    ]..sort((a, b) => b.activeDayCount.compareTo(a.activeDayCount));
+    ];
     return _ReportData(
       period: period,
       start: start,
@@ -746,13 +798,18 @@ class _EquipmentReport {
     required this.id,
     required this.name,
     required this.records,
-    required this.activeDayCount,
   });
 
   final String id;
   final String name;
   final List<WorkoutExerciseSummary> records;
-  final int activeDayCount;
+
+  bool get isCardio => records.first.recordType == 'cardio';
+  int get totalSets =>
+      records.fold(0, (sum, record) => sum + record.sets.length);
+  int get cardioSeconds =>
+      records.fold(0, (sum, record) => sum + (record.durationSeconds ?? 0));
+  int get cardioMinutes => cardioSeconds ~/ 60;
 
   String get performanceLabel {
     final cardioSeconds = records.fold(
