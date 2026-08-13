@@ -85,7 +85,7 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('レポート'));
+    await tester.tap(find.byType(NavigationDestination).at(1));
     await tester.pumpAndSettle();
     expect(find.text('トレーニングの記録がここに表示されます'), findsOneWidget);
     await tester.tap(find.text('分析'));
@@ -195,14 +195,11 @@ void main() {
     await tester.drag(find.byType(ListView).last, const Offset(0, -1800));
     await tester.pumpAndSettle();
     expect(find.textContaining('チェストプレス'), findsWidgets);
-    await tester.tap(find.text('レポート'));
+    await tester.tap(find.byType(NavigationDestination).at(1));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();
     final sessionTitle = find.textContaining('1種目・2セット');
-    await tester.scrollUntilVisible(
-      sessionTitle,
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
     final sessionTile = find.ancestor(
       of: sessionTitle,
       matching: find.byType(ListTile),

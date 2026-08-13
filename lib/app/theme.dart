@@ -35,27 +35,94 @@ abstract final class ChocoLogTheme {
           error: ChocoLogColors.danger,
         );
 
-    final textTheme = ThemeData.light().textTheme.apply(
+    final baseTextTheme = ThemeData.light().textTheme.apply(
       bodyColor: ChocoLogColors.ink,
       displayColor: ChocoLogColors.ink,
+    );
+    final textTheme = baseTextTheme.copyWith(
+      displayLarge: baseTextTheme.displayLarge?.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -1.2,
+      ),
+      displayMedium: baseTextTheme.displayMedium?.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.9,
+      ),
+      displaySmall: baseTextTheme.displaySmall?.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.7,
+      ),
+      headlineLarge: baseTextTheme.headlineLarge?.copyWith(
+        fontSize: 32,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.6,
+        height: 1.25,
+      ),
+      headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+        fontSize: 28,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.5,
+        height: 1.3,
+      ),
+      headlineSmall: baseTextTheme.headlineSmall?.copyWith(
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.4,
+        height: 1.3,
+      ),
+      titleLarge: baseTextTheme.titleLarge?.copyWith(
+        fontSize: 23,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.3,
+        height: 1.35,
+      ),
+      titleMedium: baseTextTheme.titleMedium?.copyWith(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.1,
+        height: 1.4,
+      ),
+      titleSmall: baseTextTheme.titleSmall?.copyWith(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        height: 1.4,
+      ),
+      bodyLarge: baseTextTheme.bodyLarge?.copyWith(
+        fontSize: 17,
+        fontWeight: FontWeight.w500,
+        height: 1.5,
+      ),
+      bodyMedium: baseTextTheme.bodyMedium?.copyWith(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        height: 1.45,
+      ),
+      bodySmall: baseTextTheme.bodySmall?.copyWith(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        height: 1.4,
+      ),
+      labelLarge: baseTextTheme.labelLarge?.copyWith(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+      ),
+      labelMedium: baseTextTheme.labelMedium?.copyWith(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+      ),
+      labelSmall: baseTextTheme.labelSmall?.copyWith(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        height: 1.3,
+      ),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      textTheme: textTheme.copyWith(
-        headlineSmall: textTheme.headlineSmall?.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.4,
-        ),
-        titleLarge: textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.2,
-        ),
-        titleMedium: textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+      textTheme: textTheme,
       scaffoldBackgroundColor: ChocoLogColors.canvas,
       canvasColor: ChocoLogColors.surface,
       dividerColor: ChocoLogColors.border,
@@ -67,9 +134,9 @@ abstract final class ChocoLogTheme {
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: ChocoLogColors.ink,
-          fontSize: 22,
+          fontSize: 24,
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.3,
+          letterSpacing: -0.4,
         ),
       ),
       cardTheme: CardThemeData(
@@ -84,6 +151,8 @@ abstract final class ChocoLogTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: ChocoLogColors.surface,
         surfaceTintColor: Colors.transparent,
+        titleTextStyle: textTheme.titleLarge,
+        contentTextStyle: textTheme.bodyMedium,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
@@ -94,6 +163,7 @@ abstract final class ChocoLogTheme {
       popupMenuTheme: PopupMenuThemeData(
         color: ChocoLogColors.surface,
         surfaceTintColor: Colors.transparent,
+        textStyle: textTheme.bodyMedium,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       dropdownMenuTheme: DropdownMenuThemeData(
@@ -110,7 +180,7 @@ abstract final class ChocoLogTheme {
           foregroundColor: ChocoLogColors.ink,
           backgroundColor: ChocoLogColors.yellow,
           minimumSize: const Size.fromHeight(52),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          textStyle: textTheme.labelLarge,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -121,7 +191,7 @@ abstract final class ChocoLogTheme {
           foregroundColor: ChocoLogColors.ink,
           backgroundColor: ChocoLogColors.surface,
           minimumSize: const Size.fromHeight(52),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          textStyle: textTheme.labelLarge,
           side: const BorderSide(color: ChocoLogColors.border),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -131,13 +201,20 @@ abstract final class ChocoLogTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: ChocoLogColors.link,
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: textTheme.labelLarge,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: ChocoLogColors.surface,
-        labelStyle: const TextStyle(color: ChocoLogColors.muted),
+        labelStyle: textTheme.bodySmall?.copyWith(
+          color: ChocoLogColors.muted,
+          fontWeight: FontWeight.w600,
+        ),
+        floatingLabelStyle: textTheme.labelMedium?.copyWith(
+          color: ChocoLogColors.ink,
+        ),
+        hintStyle: textTheme.bodyMedium?.copyWith(color: ChocoLogColors.muted),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: ChocoLogColors.border),
@@ -156,9 +233,15 @@ abstract final class ChocoLogTheme {
         selectedColor: ChocoLogColors.paleYellow,
         side: const BorderSide(color: ChocoLogColors.border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        labelStyle: const TextStyle(
-          color: ChocoLogColors.ink,
-          fontWeight: FontWeight.w600,
+        labelStyle: textTheme.labelMedium?.copyWith(color: ChocoLogColors.ink),
+      ),
+      listTileTheme: ListTileThemeData(
+        textColor: ChocoLogColors.ink,
+        titleTextStyle: textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+        subtitleTextStyle: textTheme.bodySmall?.copyWith(
+          color: ChocoLogColors.muted,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -169,7 +252,7 @@ abstract final class ChocoLogTheme {
           return TextStyle(
             color: selected ? ChocoLogColors.ink : ChocoLogColors.muted,
             fontSize: 12,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -183,7 +266,7 @@ abstract final class ChocoLogTheme {
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         elevation: 0,
-        height: 78,
+        height: 84,
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
@@ -196,8 +279,10 @@ abstract final class ChocoLogTheme {
           side: const WidgetStatePropertyAll(
             BorderSide(color: ChocoLogColors.border),
           ),
+          textStyle: WidgetStatePropertyAll(textTheme.labelLarge),
         ),
       ),
+      snackBarTheme: SnackBarThemeData(contentTextStyle: textTheme.bodyMedium),
     );
   }
 }

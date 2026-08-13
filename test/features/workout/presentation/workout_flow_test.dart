@@ -125,15 +125,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('チェストプレス'), findsWidgets);
 
-    await tester.tap(find.text('レポート'));
+    await tester.tap(find.byType(NavigationDestination).at(1));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();
     final completedSessionTitle = find.textContaining('2種目・8セット');
-    await tester.scrollUntilVisible(
-      completedSessionTitle,
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
     expect(find.text('チェストプレス・アブベンチ'), findsOneWidget);
     expect(completedSessionTitle, findsOneWidget);
     await tester.tap(
