@@ -231,7 +231,9 @@ class _ActivityChart extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '棒の高さは1日の記録回数です',
+              report.period == _ReportPeriod.week
+                  ? '棒の高さは1日の記録回数です'
+                  : '棒の高さは5日間の記録回数です',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
