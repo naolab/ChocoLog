@@ -28,11 +28,13 @@ class CardioTimerScreen extends ConsumerStatefulWidget {
 
 class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
   final _distanceController = TextEditingController();
+  final _durationController = TextEditingController(text: '20');
   EquipmentItem? _equipment;
   CardioRecordSnapshot? _record;
   Timer? _ticker;
   var _loading = true;
   var _processing = false;
+  var _manualEntry = false;
   String? _error;
 
   @override
@@ -45,6 +47,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
   void dispose() {
     _ticker?.cancel();
     _distanceController.dispose();
+    _durationController.dispose();
     super.dispose();
   }
 
@@ -61,23 +64,79 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_record == null)
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          icon: Icon(Icons.timer_outlined),
+                          label: Text('タイマー'),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          icon: Icon(Icons.edit_outlined),
+                          label: Text('手動で記録'),
+                        ),
+                      ],
+                      selected: {_manualEntry},
+                      onSelectionChanged: _processing
+                          ? null
+                          : (value) =>
+                                setState(() => _manualEntry = value.first),
+                    ),
                   const Spacer(),
-                  Text(
-                    _formatDuration(
-                      _record?.elapsedSecondsAt(DateTime.now().toUtc()) ?? 0,
+                  if (!_manualEntry || _record != null) ...[
+                    Text(
+                      _formatDuration(
+                        _record?.elapsedSecondsAt(DateTime.now().toUtc()) ?? 0,
+                      ),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: 12),
+                    Text(
+                      _statusLabel(_record?.timerStatus),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _statusLabel(_record?.timerStatus),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  ] else ...[
+                    Text(
+                      '運動した時間',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final minutes in [10, 20, 30, 45])
+                          ChoiceChip(
+                            label: Text('$minutes分'),
+                            selected: _durationController.text == '$minutes',
+                            onSelected: (_) => setState(
+                              () => _durationController.text = '$minutes',
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _durationController,
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(
+                        labelText: '時間',
+                        suffixText: '分',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
                   const Spacer(),
                   TextField(
                     controller: _distanceController,
@@ -95,7 +154,13 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  if (_record == null)
+                  if (_record == null && _manualEntry)
+                    FilledButton.icon(
+                      onPressed: _processing ? null : _saveManual,
+                      icon: const Icon(Icons.add),
+                      label: const Text('この内容で記録'),
+                    )
+                  else if (_record == null)
                     FilledButton.icon(
                       onPressed: _processing ? null : _start,
                       icon: const Icon(Icons.play_arrow),
@@ -196,22 +261,52 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
   );
 
   Future<void> _finish() async {
-    final distanceText = _distanceController.text.trim();
-    final distance = distanceText.isEmpty
-        ? null
-        : double.tryParse(distanceText);
-    if (distanceText.isNotEmpty && distance == null) {
-      _showError('距離を正しく入力してください');
-      return;
-    }
+    final distance = _parseDistance();
+    if (!distance.valid) return;
     await _update(
       () => ref
           .read(workoutFlowControllerProvider.notifier)
-          .finishCardio(recordId: _record!.id, distanceKm: distance),
+          .finishCardio(recordId: _record!.id, distanceKm: distance.value),
     );
     if (mounted && _record?.timerStatus == 'completed') {
       await _finishNavigation();
     }
+  }
+
+  Future<void> _saveManual() async {
+    final minutes = int.tryParse(_durationController.text.trim());
+    if (minutes == null || minutes <= 0) {
+      _showError('時間を1分以上で入力してください');
+      return;
+    }
+    final distance = _parseDistance();
+    if (!distance.valid) return;
+    setState(() => _processing = true);
+    try {
+      await ref
+          .read(workoutFlowControllerProvider.notifier)
+          .addManualCardio(
+            equipmentId: widget.equipmentId,
+            durationMinutes: minutes,
+            distanceKm: distance.value,
+            studioId: widget.studioId,
+          );
+      if (mounted) await _finishNavigation();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      _showError('記録を保存できませんでした');
+    }
+  }
+
+  ({bool valid, double? value}) _parseDistance() {
+    final text = _distanceController.text.trim();
+    final value = text.isEmpty ? null : double.tryParse(text);
+    if (text.isNotEmpty && value == null) {
+      _showError('距離を正しく入力してください');
+      return (valid: false, value: null);
+    }
+    return (valid: true, value: value);
   }
 
   Future<void> _finishNavigation() async {

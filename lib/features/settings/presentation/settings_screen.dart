@@ -2,6 +2,7 @@ import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/settings/data/reminder_service.dart';
+import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late Set<int> _weekdays;
   late TimeOfDay _time;
   var _saving = false;
+  late Future<StudioItem?> _preferredStudio;
 
   @override
   void initState() {
@@ -36,6 +38,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       hour: preferences.reminderHour,
       minute: preferences.reminderMinute,
     );
+    _preferredStudio = StudioRepository.instance.preferredStudio();
   }
 
   @override
@@ -51,8 +54,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 ListTile(
                   title: const Text('よく行く店舗'),
+                  subtitle: FutureBuilder<StudioItem?>(
+                    future: _preferredStudio,
+                    builder: (context, snapshot) => Text(
+                      snapshot.connectionState == ConnectionState.waiting
+                          ? '読み込み中'
+                          : snapshot.data?.name ?? '未設定',
+                    ),
+                  ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/settings/studios'),
+                  onTap: () async {
+                    await context.push('/settings/studios');
+                    if (!mounted) return;
+                    setState(() {
+                      _preferredStudio = StudioRepository.instance
+                          .preferredStudio();
+                    });
+                  },
                 ),
                 const Divider(height: 1),
                 Padding(
@@ -100,8 +118,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                 ),
-                const Divider(height: 1),
-                const ListTile(title: Text('週の開始曜日'), trailing: Text('月曜日')),
               ],
             ),
           ),
