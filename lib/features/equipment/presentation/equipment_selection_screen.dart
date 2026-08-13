@@ -1,5 +1,6 @@
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
+import 'package:chocolog/features/equipment/presentation/equipment_image.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -132,13 +133,7 @@ class _EquipmentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      leading: CircleAvatar(
-        child: Icon(
-          equipment.metricType == 'cardio'
-              ? Icons.directions_run
-              : Icons.fitness_center,
-        ),
-      ),
+      leading: EquipmentImage(equipmentId: equipment.id, size: 58),
       title: Text(equipment.name),
       subtitle: Text(
         [

@@ -1,5 +1,6 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/features/equipment/presentation/equipment_image.dart';
 import 'package:chocolog/features/history/presentation/history_screens.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
@@ -213,10 +214,21 @@ class _EquipmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: ChocoLogColors.yellow,
-          foregroundColor: Colors.black,
-          child: Text('$rank'),
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            EquipmentImage(equipmentId: equipment.id, size: 58),
+            Positioned(
+              left: -6,
+              top: -6,
+              child: CircleAvatar(
+                radius: 12,
+                backgroundColor: ChocoLogColors.yellow,
+                foregroundColor: ChocoLogColors.ink,
+                child: Text('$rank'),
+              ),
+            ),
+          ],
         ),
         title: Text(equipment.name),
         subtitle: Text(equipment.performanceLabel),
@@ -304,12 +316,16 @@ class _ReportData {
     final byEquipment = <String, List<WorkoutExerciseSummary>>{};
     for (final session in sessions) {
       for (final exercise in session.exercises) {
-        byEquipment.putIfAbsent(exercise.equipmentName, () => []).add(exercise);
+        byEquipment.putIfAbsent(exercise.equipmentId, () => []).add(exercise);
       }
     }
     final equipment = [
       for (final entry in byEquipment.entries)
-        _EquipmentReport(name: entry.key, records: entry.value),
+        _EquipmentReport(
+          id: entry.key,
+          name: entry.value.first.equipmentName,
+          records: entry.value,
+        ),
     ]..sort((a, b) => b.usageCount.compareTo(a.usageCount));
     return _ReportData(
       period: period,
@@ -322,8 +338,13 @@ class _ReportData {
 }
 
 class _EquipmentReport {
-  const _EquipmentReport({required this.name, required this.records});
+  const _EquipmentReport({
+    required this.id,
+    required this.name,
+    required this.records,
+  });
 
+  final String id;
   final String name;
   final List<WorkoutExerciseSummary> records;
 

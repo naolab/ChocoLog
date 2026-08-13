@@ -1,5 +1,6 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/features/equipment/presentation/equipment_image.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
@@ -198,24 +199,37 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(18),
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          exercise.equipmentName,
-                          style: Theme.of(context).textTheme.titleMedium,
+                        EquipmentImage(
+                          equipmentId: exercise.equipmentId,
+                          size: 76,
                         ),
-                        const SizedBox(height: 12),
-                        if (exercise.recordType == 'cardio')
-                          Text(_cardioLabel(exercise))
-                        else
-                          for (final (index, set) in exercise.sets.indexed)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Text(
-                                '${index + 1}セット目　${_setLabel(exercise, set)}',
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                exercise.equipmentName,
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              if (exercise.recordType == 'cardio')
+                                Text(_cardioLabel(exercise))
+                              else
+                                for (final (index, set)
+                                    in exercise.sets.indexed)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Text(
+                                      '${index + 1}セット目　${_setLabel(exercise, set)}',
+                                    ),
+                                  ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -440,6 +454,10 @@ class _SessionCard extends StatelessWidget {
           if (changed == true) await onChanged();
         },
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        leading: EquipmentImage(
+          equipmentId: summary.exercises.first.equipmentId,
+          size: 58,
+        ),
         title: Text(
           '${_twoDigits(startedAt.hour)}:${_twoDigits(startedAt.minute)}　'
           '${_sessionTotalLabel(summary)}',
