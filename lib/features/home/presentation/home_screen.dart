@@ -39,8 +39,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             Image.asset(
               'assets/branding/chocolog_app_icon.png',
-              width: 30,
-              height: 30,
+              width: 36,
+              height: 36,
             ),
             const SizedBox(width: 8),
             const Text('chocoLOG'),
