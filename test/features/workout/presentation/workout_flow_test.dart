@@ -177,6 +177,8 @@ void main() {
     await tester.tap(find.text('トレッドミル'));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('タイマー'));
+    await tester.pumpAndSettle();
     expect(find.text('開始前'), findsOneWidget);
     await tester.enterText(find.byType(TextField), '1.2');
     await tester.tap(find.text('タイマーを開始'));

@@ -35,7 +35,7 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
   Timer? _ticker;
   var _loading = true;
   var _processing = false;
-  var _manualEntry = false;
+  var _manualEntry = true;
   String? _error;
 
   @override
@@ -69,14 +69,14 @@ class _CardioTimerScreenState extends ConsumerState<CardioTimerScreen> {
                     SegmentedButton<bool>(
                       segments: const [
                         ButtonSegment(
-                          value: false,
-                          icon: Icon(Icons.timer_outlined),
-                          label: Text('タイマー'),
-                        ),
-                        ButtonSegment(
                           value: true,
                           icon: Icon(Icons.edit_outlined),
                           label: Text('手動で記録'),
+                        ),
+                        ButtonSegment(
+                          value: false,
+                          icon: Icon(Icons.timer_outlined),
+                          label: Text('タイマー'),
                         ),
                       ],
                       selected: {_manualEntry},

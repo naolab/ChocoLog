@@ -185,7 +185,7 @@ class StudioRepository {
 
   Future<File> _cacheFile() async {
     final directory = await getApplicationSupportDirectory();
-    return File('${directory.path}/studios-cache.json');
+    return File('${directory.path}/studios-cache-v2.json');
   }
 }
 
@@ -215,9 +215,12 @@ StudioItem _mapStudio(
     final machine = value as Map<String, dynamic>;
     final details = machine['machine_details'] as Map<String, dynamic>?;
     final name = machineNames[details?['module_id'] as int?];
-    final equipmentId = name == null ? null : _equipmentIdsByName[name];
-    if (equipmentId != null) {
-      units[equipmentId] = machine['total_units'] as int? ?? 1;
+    final equipmentIds = name == null ? null : _equipmentIdsByName[name];
+    if (equipmentIds != null) {
+      final totalUnits = machine['total_units'] as int? ?? 1;
+      for (final equipmentId in equipmentIds) {
+        units[equipmentId] = totalUnits;
+      }
     }
   }
   return StudioItem(
@@ -241,16 +244,20 @@ class _StudioCache {
 }
 
 const _equipmentIdsByName = {
-  'ショルダープレス': 'shoulder-press',
-  'チェストプレス': 'chest-press',
-  'ラットプルダウン': 'lat-pulldown',
-  'バイセップスカール': 'biceps-curl',
-  'ディップス': 'dips',
-  'アブドミナルトレーナー': 'abdominal-trainer',
-  'アブベンチ': 'ab-bench',
-  'レッグプレス': 'leg-press',
-  'アダクション': 'adduction',
-  'アブダクション': 'abduction',
-  'トレッドミル': 'treadmill',
-  'バイク': 'bike',
+  'ショルダープレス': ['shoulder-press'],
+  'チェストプレス': ['chest-press'],
+  'ラットプルダウン': ['lat-pulldown'],
+  'ラットプルダウン/ミッドロウ': ['lat-pulldown'],
+  'バイセップスカール': ['biceps-curl'],
+  'ディップス': ['dips'],
+  'アブドミナルトレーナー': ['abdominal-trainer'],
+  'アブベンチ': ['ab-bench'],
+  'レッグプレス': ['leg-press'],
+  'アダクション': ['adduction'],
+  'アブダクション': ['abduction'],
+  'アダクション/アブダクション': ['adduction', 'abduction'],
+  'トレッドミル': ['treadmill'],
+  'バイク': ['bike'],
+  'スピンバイク': ['bike'],
+  'リカンベントバイク': ['bike'],
 };
