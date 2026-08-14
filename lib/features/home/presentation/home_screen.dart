@@ -246,23 +246,14 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Container(
-        width: 34,
-        height: 34,
-        decoration: const BoxDecoration(
-          color: ChocoLogColors.yellow,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: ChocoLogColors.ink, size: 20),
-      ),
-      const SizedBox(width: 10),
+      Icon(icon, color: ChocoLogColors.ink, size: 28),
+      const SizedBox(width: 9),
       Text(label, style: Theme.of(context).textTheme.titleLarge),
     ],
   );
 }
 
-String _displayStudioName(String name) =>
-    name.endsWith('店') ? name : '$name店';
+String _displayStudioName(String name) => name.endsWith('店') ? name : '$name店';
 
 class _HomeData {
   const _HomeData({

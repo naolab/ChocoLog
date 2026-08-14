@@ -363,15 +363,7 @@ class _ReportSectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Container(
-        width: 30,
-        height: 30,
-        decoration: const BoxDecoration(
-          color: ChocoLogColors.yellow,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: ChocoLogColors.ink, size: 18),
-      ),
+      Icon(icon, color: ChocoLogColors.ink, size: 25),
       const SizedBox(width: 9),
       Text(label, style: Theme.of(context).textTheme.titleMedium),
     ],
