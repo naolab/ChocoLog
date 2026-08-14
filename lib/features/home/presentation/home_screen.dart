@@ -42,7 +42,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               width: 36,
               height: 36,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             Semantics(
               label: 'chocoLOG',
               image: true,
