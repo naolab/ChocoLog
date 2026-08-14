@@ -49,7 +49,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Image.asset(
                 'assets/branding/chocolog_wordmark.png',
                 key: const Key('home-wordmark'),
-                width: 108,
+                width: 120,
                 height: 36,
                 fit: BoxFit.contain,
               ),
