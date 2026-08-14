@@ -23,6 +23,10 @@ void main() {
               'total_units': 4,
             },
             {
+              'machine_details': {'module_id': 632232},
+              'total_units': 1,
+            },
+            {
               'machine_details': {'module_id': 999999},
               'total_units': 1,
             },
@@ -34,6 +38,7 @@ void main() {
       'list': [
         {'topics_id': 994, 'name': 'チェストプレス'},
         {'topics_id': 985, 'name': 'トレッドミル'},
+        {'topics_id': 632232, 'name': 'アダクション/アブダクション'},
         {'topics_id': 999999, 'name': '未対応器具'},
       ],
     });
@@ -42,7 +47,12 @@ void main() {
 
     expect(studio.id, '123');
     expect(studio.name, 'テスト店');
-    expect(studio.equipmentUnits, {'chest-press': 2, 'treadmill': 4});
+    expect(studio.equipmentUnits, {
+      'chest-press': 2,
+      'treadmill': 4,
+      'adduction': 1,
+      'abduction': 1,
+    });
   });
 
   test('キャッシュ用JSONを往復できる', () {
