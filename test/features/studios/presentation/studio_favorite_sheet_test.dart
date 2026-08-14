@@ -77,8 +77,8 @@ void main() {
     expect(result, isFalse);
   });
 
-  test('選択状態の黄色はビビッドイエローに統一されている', () {
-    expect(ChocoLogColors.softYellow, ChocoLogColors.yellow);
+  test('選択背景は薄い黄色、主要操作はビビッドイエローを使う', () {
+    expect(ChocoLogColors.softYellow, isNot(ChocoLogColors.yellow));
     expect(
       ChocoLogTheme.light.chipTheme.selectedColor,
       ChocoLogColors.softYellow,
