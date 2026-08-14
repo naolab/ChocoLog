@@ -45,7 +45,7 @@ void main() {
     await tester.tap(find.text('設定を保存して始める'));
     await tester.pumpAndSettle();
 
-    expect(find.text('chocoLOG'), findsOneWidget);
+    expect(find.byKey(const Key('home-wordmark')), findsOneWidget);
     expect(find.text('店舗未設定'), findsOneWidget);
     expect(find.text('器具を選んで記録'), findsOneWidget);
     expect(find.text('ショルダープレス'), findsOneWidget);
@@ -312,7 +312,7 @@ void main() {
     await tester.tap(find.text('このメニューを複製'));
     await tester.pumpAndSettle();
 
-    expect(find.text('chocoLOG'), findsOneWidget);
+    expect(find.byKey(const Key('home-wordmark')), findsOneWidget);
     expect(find.textContaining('チェストプレス'), findsWidgets);
     final active = await repository.getActiveSession();
     expect(active, isNull);

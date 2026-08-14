@@ -43,7 +43,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               height: 36,
             ),
             const SizedBox(width: 8),
-            const Text('chocoLOG'),
+            Semantics(
+              label: 'chocoLOG',
+              image: true,
+              child: Image.asset(
+                'assets/branding/chocolog_wordmark.png',
+                key: const Key('home-wordmark'),
+                width: 108,
+                height: 36,
+                fit: BoxFit.contain,
+              ),
+            ),
           ],
         ),
       ),
