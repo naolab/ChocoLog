@@ -33,7 +33,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
     final equipment = ref.watch(activeEquipmentProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('chocoLOG')),
+      appBar: AppBar(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/branding/chocolog_app_icon.png',
+              width: 30,
+              height: 30,
+            ),
+            const SizedBox(width: 8),
+            const Text('chocoLOG'),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: FutureBuilder<_HomeData>(
           future: _data,
@@ -55,15 +68,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     onClear: data.studio == null ? null : _clearStudio,
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    '器具を選んで記録',
-                    style: Theme.of(context).textTheme.titleLarge,
+                  _SectionTitle(
+                    icon: Icons.fitness_center_rounded,
+                    label: '器具を選んで記録',
                   ),
                   const SizedBox(height: 4),
                   Text(
                     data.studio == null
                         ? 'すべての器具を表示しています'
-                        : '${data.studio!.name}の設置器具',
+                        : '${_displayStudioName(data.studio!.name)}の設置器具',
                     style: const TextStyle(color: ChocoLogColors.muted),
                   ),
                   const SizedBox(height: 12),
@@ -110,7 +123,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                   ),
                   const SizedBox(height: 28),
-                  Text('今日の記録', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 4),
+                  _SectionTitle(icon: Icons.fact_check_rounded, label: '今日の記録'),
                   const SizedBox(height: 12),
                   if (data.currentRecord != null &&
                       data.currentRecord!.exercises.isNotEmpty) ...[
@@ -222,6 +236,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 }
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 34,
+        height: 34,
+        decoration: const BoxDecoration(
+          color: ChocoLogColors.yellow,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: ChocoLogColors.ink, size: 20),
+      ),
+      const SizedBox(width: 10),
+      Text(label, style: Theme.of(context).textTheme.titleLarge),
+    ],
+  );
+}
+
+String _displayStudioName(String name) =>
+    name.endsWith('店') ? name : '$name店';
 
 class _HomeData {
   const _HomeData({

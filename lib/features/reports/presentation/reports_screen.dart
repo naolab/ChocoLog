@@ -172,7 +172,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text('日ごとの運動量', style: Theme.of(context).textTheme.titleMedium),
+                _ReportSectionTitle(
+                  icon: Icons.bar_chart_rounded,
+                  label: '日ごとの運動量',
+                ),
                 const SizedBox(height: 10),
                 _ActivityChart(
                   report: report,
@@ -186,7 +189,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       setState(() => _selectedChartDate = date),
                 ),
                 const SizedBox(height: 24),
-                Text('よく使った器具', style: Theme.of(context).textTheme.titleMedium),
+                _ReportSectionTitle(
+                  icon: Icons.workspace_premium_rounded,
+                  label: 'よく使った器具',
+                ),
                 const SizedBox(height: 10),
                 if (report.strengthEquipment.isNotEmpty) ...[
                   Text(
@@ -292,7 +298,7 @@ class _GoalStatus extends StatelessWidget {
         : '週目標を達成した週 $achievedWeeks / ${report.weekCount}週';
     final detail = report.period == _ReportPeriod.week
         ? '週$weeklyTarget回の目標'
-        : '今月ここまで・週$weeklyTarget回の目標';
+        : '週$weeklyTarget回の目標';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -346,6 +352,30 @@ class _Metric extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReportSectionTitle extends StatelessWidget {
+  const _ReportSectionTitle({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 30,
+        height: 30,
+        decoration: const BoxDecoration(
+          color: ChocoLogColors.yellow,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: ChocoLogColors.ink, size: 18),
+      ),
+      const SizedBox(width: 9),
+      Text(label, style: Theme.of(context).textTheme.titleMedium),
+    ],
+  );
 }
 
 class _ActivityChart extends StatelessWidget {
@@ -443,7 +473,7 @@ class _ActivityChart extends StatelessWidget {
               child: SizedBox(
                 width: report.period == _ReportPeriod.week
                     ? MediaQuery.sizeOf(context).width - 72
-                    : points.length * 34,
+                    : points.length * 42,
                 height: 184,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -452,7 +482,7 @@ class _ActivityChart extends StatelessWidget {
                       SizedBox(
                         width: report.period == _ReportPeriod.week
                             ? (MediaQuery.sizeOf(context).width - 72) / 7
-                            : 34,
+                            : 42,
                         child: _ChartBar(
                           point: point,
                           maximum: maximum,
