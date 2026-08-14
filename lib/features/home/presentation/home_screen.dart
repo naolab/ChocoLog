@@ -46,12 +46,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Semantics(
               label: 'chocoLOG',
               image: true,
-              child: Image.asset(
-                'assets/branding/chocolog_wordmark.png',
-                key: const Key('home-wordmark'),
-                width: 120,
-                height: 36,
-                fit: BoxFit.contain,
+              child: Transform.translate(
+                offset: const Offset(0, 2),
+                child: Image.asset(
+                  'assets/branding/chocolog_wordmark.png',
+                  key: const Key('home-wordmark'),
+                  width: 136,
+                  height: 40,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ],
