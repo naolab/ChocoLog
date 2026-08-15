@@ -19,6 +19,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late Future<_HomeData> _data;
   String? _openingEquipmentId;
+  var _showAllEquipment = false;
 
   @override
   void initState() {
@@ -92,7 +93,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         : '${_displayStudioName(data.studio!.name)}の設置器具',
                     style: const TextStyle(color: ChocoLogColors.muted),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
+                  if (data.studio != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => setState(
+                          () => _showAllEquipment = !_showAllEquipment,
+                        ),
+                        icon: Icon(
+                          _showAllEquipment
+                              ? Icons.storefront_outlined
+                              : Icons.grid_view_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          _showAllEquipment ? '店舗の器具のみ' : 'すべての器具を表示',
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
                   equipment.when(
                     loading: () => const Padding(
                       padding: EdgeInsets.all(32),
@@ -100,7 +120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     error: (error, stackTrace) => const _EquipmentError(),
                     data: (items) {
-                      final visible = data.studio == null
+                      final visible = data.studio == null || _showAllEquipment
                           ? items
                           : items
                                 .where(

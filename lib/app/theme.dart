@@ -283,7 +283,16 @@ abstract final class ChocoLogTheme {
           textStyle: WidgetStatePropertyAll(textTheme.labelLarge),
         ),
       ),
-      snackBarTheme: SnackBarThemeData(contentTextStyle: textTheme.bodyMedium),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: ChocoLogColors.surface,
+        behavior: SnackBarBehavior.floating,
+        elevation: 3,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: ChocoLogColors.ink,
+        ),
+        actionTextColor: ChocoLogColors.link,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
     );
   }
 }

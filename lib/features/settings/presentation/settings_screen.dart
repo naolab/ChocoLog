@@ -3,6 +3,7 @@ import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/settings/data/reminder_service.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
+import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,7 +45,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('設定')),
+      appBar: AppBar(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.settings_rounded, size: 25),
+            SizedBox(width: 8),
+            Text('設定'),
+          ],
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
@@ -450,6 +460,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (confirmed != true || !mounted) return;
     setState(() => _saving = true);
     await ref.read(workoutRepositoryProvider).deleteAllWorkoutSessions();
+    ref.read(workoutFlowControllerProvider.notifier).notifyRecordsChanged();
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(

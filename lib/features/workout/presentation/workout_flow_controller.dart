@@ -190,6 +190,11 @@ class WorkoutFlowController
     state = const AsyncData(null);
   }
 
+  void notifyRecordsChanged() {
+    state = const AsyncLoading();
+    state = const AsyncData(null);
+  }
+
   Future<WorkoutSessionSummary> summary() async {
     final session = await _repository.getActiveSession();
     if (session == null) {
