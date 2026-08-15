@@ -83,7 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: 24),
                   _SectionTitle(
-                    icon: Icons.fitness_center_rounded,
+                    icon: Icons.add_task_rounded,
                     label: '器具を選んで記録',
                   ),
                   const SizedBox(height: 4),

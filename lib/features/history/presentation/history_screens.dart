@@ -48,6 +48,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         }
 
         final latestDate = _localDate(sessions.first.session.startedAt);
+        final earliestDate = _localDate(sessions.last.session.startedAt);
         final visibleMonth =
             _visibleMonth ?? DateTime(latestDate.year, latestDate.month);
         final selectedDate = _selectedDate ?? latestDate;
@@ -69,6 +70,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               _MonthCalendar(
                 month: visibleMonth,
                 selectedDate: selectedDate,
+                earliestMonth: DateTime(earliestDate.year, earliestDate.month),
+                today: _localDate(DateTime.now()),
                 recordedDates: {
                   for (final summary in sessions)
                     _localDate(summary.session.startedAt),
@@ -322,6 +325,8 @@ class _MonthCalendar extends StatelessWidget {
   const _MonthCalendar({
     required this.month,
     required this.selectedDate,
+    required this.earliestMonth,
+    required this.today,
     required this.recordedDates,
     required this.onPreviousMonth,
     required this.onNextMonth,
@@ -330,6 +335,8 @@ class _MonthCalendar extends StatelessWidget {
 
   final DateTime month;
   final DateTime selectedDate;
+  final DateTime earliestMonth;
+  final DateTime today;
   final Set<DateTime> recordedDates;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
@@ -337,6 +344,14 @@ class _MonthCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canGoPrevious = DateTime(
+      month.year,
+      month.month,
+    ).isAfter(earliestMonth);
+    final canGoNext = DateTime(
+      month.year,
+      month.month,
+    ).isBefore(DateTime(today.year, today.month));
     final firstWeekdayOffset = DateTime(month.year, month.month, 1).weekday - 1;
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
     final cellCount = ((firstWeekdayOffset + daysInMonth + 6) ~/ 7) * 7;
@@ -348,7 +363,7 @@ class _MonthCalendar extends StatelessWidget {
             Row(
               children: [
                 IconButton(
-                  onPressed: onPreviousMonth,
+                  onPressed: canGoPrevious ? onPreviousMonth : null,
                   icon: const Icon(Icons.chevron_left),
                   tooltip: '前の月',
                 ),
@@ -360,7 +375,7 @@ class _MonthCalendar extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: onNextMonth,
+                  onPressed: canGoNext ? onNextMonth : null,
                   icon: const Icon(Icons.chevron_right),
                   tooltip: '次の月',
                 ),
@@ -391,11 +406,12 @@ class _MonthCalendar extends StatelessWidget {
                 final day = index - firstWeekdayOffset + 1;
                 if (day < 1 || day > daysInMonth) return const SizedBox();
                 final date = DateTime(month.year, month.month, day);
+                final isFuture = date.isAfter(today);
                 final isSelected = _isSameDate(date, selectedDate);
                 final hasRecord = recordedDates.contains(date);
                 return InkWell(
                   borderRadius: BorderRadius.circular(20),
-                  onTap: () => onDateSelected(date),
+                  onTap: isFuture ? null : () => onDateSelected(date),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -409,7 +425,12 @@ class _MonthCalendar extends StatelessWidget {
                               : Colors.transparent,
                           shape: BoxShape.circle,
                         ),
-                        child: Text('$day'),
+                        child: Text(
+                          '$day',
+                          style: isFuture
+                              ? const TextStyle(color: ChocoLogColors.border)
+                              : null,
+                        ),
                       ),
                       Container(
                         width: 5,
