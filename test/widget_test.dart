@@ -80,6 +80,11 @@ void main() {
     await tester.tap(find.text('チェストプレス'));
     await tester.pumpAndSettle();
     expect(find.text('前回のセット'), findsNothing);
+    await tester.drag(
+      find.byKey(const Key('strength-entry-list')),
+      const Offset(0, -320),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('このセットを追加'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
 
@@ -208,6 +213,9 @@ void main() {
     expect(find.text('2セット'), findsOneWidget);
     expect(find.text('目標まであと1回'), findsOneWidget);
     expect(find.textContaining('/'), findsNothing);
+    await tester.tap(find.text('月'));
+    await tester.pumpAndSettle();
+    expect(find.text('週目標を達成した週 0週'), findsOneWidget);
     expect(find.text('日ごとの運動量'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('器具ごとのセット数を日別に表示'),
@@ -283,6 +291,22 @@ void main() {
     expect(find.text('筋トレ（セット数順）'), findsOneWidget);
     await tester.tap(find.text('履歴'));
     await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.chevron_right),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.chevron_left),
+          )
+          .onPressed,
+      isNull,
+    );
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();
     final sessionTitle = find.textContaining('1種目・2セット');

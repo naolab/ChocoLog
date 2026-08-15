@@ -250,50 +250,121 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
 
   Widget _recommendationCard() {
     final recommendation = _recommendation!;
-    return Card(
-      color: ChocoLogColors.softYellow,
+    return Container(
+      decoration: BoxDecoration(
+        color: ChocoLogColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: ChocoLogColors.border),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.tips_and_updates_outlined, size: 22),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: ChocoLogColors.yellow,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.auto_awesome_rounded, size: 20),
+                ),
                 const SizedBox(width: 8),
-                Text('おすすめ', style: Theme.of(context).textTheme.titleSmall),
+                Expanded(
+                  child: Text(
+                    'おすすめ',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                Text(
+                  'タップで入力',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
+                ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: ChocoLogColors.softYellow,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Text('回数・セット', style: Theme.of(context).textTheme.bodySmall),
+                  const Spacer(),
+                  Text(
+                    '${recommendation.reps}回 × 3セット',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (recommendation.womenWeight != null)
+                  Expanded(
+                    child: _recommendationWeightButton(
+                      label: '女性の目安',
+                      weight: recommendation.womenWeight!,
+                      recommendation: recommendation,
+                    ),
+                  ),
+                if (recommendation.womenWeight != null &&
+                    recommendation.menWeight != null)
+                  const SizedBox(width: 8),
+                if (recommendation.menWeight != null)
+                  Expanded(
+                    child: _recommendationWeightButton(
+                      label: '男性の目安',
+                      weight: recommendation.menWeight!,
+                      recommendation: recommendation,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _recommendationWeightButton({
+    required String label,
+    required int weight,
+    required _StrengthRecommendation recommendation,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => setState(() {
+        _weightController.text = '$weight';
+        _repsController.text = '${recommendation.reps}';
+      }),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          color: ChocoLogColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: ChocoLogColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              '${recommendation.reps}回 × 3セット',
+              label,
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (recommendation.womenWeight != null)
-                  ActionChip(
-                    label: Text('女性目安 ${recommendation.womenWeight}kg'),
-                    onPressed: () => setState(() {
-                      _weightController.text = '${recommendation.womenWeight}';
-                      _repsController.text = '${recommendation.reps}';
-                    }),
-                  ),
-                if (recommendation.menWeight != null)
-                  ActionChip(
-                    label: Text('男性目安 ${recommendation.menWeight}kg'),
-                    onPressed: () => setState(() {
-                      _weightController.text = '${recommendation.menWeight}';
-                      _repsController.text = '${recommendation.reps}';
-                    }),
-                  ),
-              ],
-            ),
+            const SizedBox(height: 2),
+            Text('$weight kg', style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
       ),

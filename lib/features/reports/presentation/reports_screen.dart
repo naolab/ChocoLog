@@ -340,7 +340,7 @@ class _GoalStatus extends StatelessWidget {
         ? weeklyAchieved
               ? '今週の目標を達成！'
               : '目標まであと${weeklyTarget - report.activeDayCount}回'
-        : '週目標を達成した週 $achievedWeeks / ${report.weekCount}週';
+        : '週目標を達成した週 $achievedWeeks週';
     final detail = report.period == _ReportPeriod.week
         ? '週$weeklyTarget回の目標'
         : '週$weeklyTarget回の目標';
@@ -837,14 +837,6 @@ class _ReportData {
       .map((summary) => _dateOnly(summary.session.startedAt.toLocal()))
       .toSet()
       .length;
-  int get weekCount {
-    final monthStart = DateTime(end.year, end.month);
-    final firstWeekStart = monthStart.subtract(
-      Duration(days: monthStart.weekday - 1),
-    );
-    return end.difference(firstWeekStart).inDays ~/ 7 + 1;
-  }
-
   int achievedWeekCount(int weeklyTarget) {
     final activeDates = sessions
         .map((summary) => _dateOnly(summary.session.startedAt.toLocal()))
@@ -917,11 +909,17 @@ class _ReportData {
     required _ReportPeriod period,
     required DateTime anchor,
   }) {
-    final today = _dateOnly(anchor);
+    final anchorDate = _dateOnly(anchor);
+    final actualToday = _dateOnly(DateTime.now());
     final start = period == _ReportPeriod.week
-        ? today.subtract(const Duration(days: 6))
-        : DateTime(today.year, today.month);
-    final end = today;
+        ? anchorDate.subtract(const Duration(days: 6))
+        : DateTime(anchorDate.year, anchorDate.month);
+    final end = period == _ReportPeriod.week
+        ? anchorDate
+        : anchorDate.year == actualToday.year &&
+              anchorDate.month == actualToday.month
+        ? actualToday
+        : DateTime(anchorDate.year, anchorDate.month + 1, 0);
     final sessions = history.where((summary) {
       final local = summary.session.startedAt.toLocal();
       final date = DateTime(local.year, local.month, local.day);
