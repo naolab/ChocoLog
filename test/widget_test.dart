@@ -213,9 +213,25 @@ void main() {
     expect(find.text('2セット'), findsOneWidget);
     expect(find.text('目標まであと1回'), findsOneWidget);
     expect(find.textContaining('/'), findsNothing);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.chevron_left),
+          )
+          .onPressed,
+      isNull,
+    );
     await tester.tap(find.text('月'));
     await tester.pumpAndSettle();
     expect(find.text('週目標を達成した週 0週'), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.chevron_left),
+          )
+          .onPressed,
+      isNull,
+    );
     expect(find.text('日ごとの運動量'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('器具ごとのセット数を日別に表示'),

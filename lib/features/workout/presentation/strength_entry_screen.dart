@@ -263,27 +263,13 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
           children: [
             Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: ChocoLogColors.yellow,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.auto_awesome_rounded, size: 20),
-                ),
+                const Icon(Icons.tips_and_updates_outlined, size: 22),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'おすすめ',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                ),
-                Text(
-                  'タップで入力',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
                 ),
               ],
             ),
@@ -341,32 +327,41 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
     required int weight,
     required _StrengthRecommendation recommendation,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => setState(() {
+    return OutlinedButton(
+      onPressed: () => setState(() {
         _weightController.text = '$weight';
         _repsController.text = '${recommendation.reps}';
       }),
-      child: Ink(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color: ChocoLogColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: ChocoLogColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 70),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        backgroundColor: ChocoLogColors.softYellow,
+        side: const BorderSide(color: ChocoLogColors.yellow, width: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$weight kg',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text('$weight kg', style: Theme.of(context).textTheme.titleMedium),
-          ],
-        ),
+          ),
+          const Icon(Icons.touch_app_outlined, size: 19),
+        ],
       ),
     );
   }

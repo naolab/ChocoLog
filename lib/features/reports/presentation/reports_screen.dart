@@ -172,7 +172,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 children: [
                   IconButton(
                     tooltip: _period == _ReportPeriod.week ? '前の週' : '前の月',
-                    onPressed: () => _changePeriod(-1),
+                    onPressed: _canGoPreviousPeriod(snapshot.requireData)
+                        ? () => _changePeriod(-1)
+                        : null,
                     icon: const Icon(Icons.chevron_left),
                   ),
                   Expanded(
@@ -282,6 +284,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     if (_period == _ReportPeriod.week) return !_periodAnchor.isBefore(today);
     return _periodAnchor.year == today.year &&
         _periodAnchor.month == today.month;
+  }
+
+  bool _canGoPreviousPeriod(List<WorkoutSessionSummary> history) {
+    if (history.isEmpty) return false;
+    final earliestRecord = _dateOnly(history.last.session.startedAt);
+    if (_period == _ReportPeriod.week) {
+      final previousWeekEnd = _periodAnchor.subtract(const Duration(days: 7));
+      return !previousWeekEnd.isBefore(earliestRecord);
+    }
+    final previousMonth = DateTime(_periodAnchor.year, _periodAnchor.month - 1);
+    final earliestMonth = DateTime(earliestRecord.year, earliestRecord.month);
+    return !previousMonth.isBefore(earliestMonth);
   }
 
   void _changePeriod(int offset) {
