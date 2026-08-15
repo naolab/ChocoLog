@@ -51,10 +51,21 @@ void main() {
     expect(find.text('20 回'), findsOneWidget);
     expect(find.text('25 回'), findsOneWidget);
     expect(find.text('12 回'), findsNothing);
-    await tester.tap(find.text('このセットを追加'));
+    final addSet = find.text('このセットを追加');
+    await tester.drag(
+      find.byKey(const Key('strength-entry-list')),
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(addSet);
     await tester.pumpAndSettle();
     expect(await repository.getActiveSession(), isNull);
     expect(await repository.getCompletedSessionSummaries(), hasLength(2));
+    await tester.drag(
+      find.byKey(const Key('strength-entry-list')),
+      const Offset(0, 420),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('前回の3セットをコピー'));
     await tester.pumpAndSettle();
 
@@ -67,7 +78,12 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, 500));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, '');
-    await tester.tap(find.text('このセットを追加'));
+    await tester.drag(
+      find.byKey(const Key('strength-entry-list')),
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(addSet);
     await tester.pumpAndSettle();
     final todaySession = await repository.getTodaySession();
     final currentSets = await repository.getSessionSets(

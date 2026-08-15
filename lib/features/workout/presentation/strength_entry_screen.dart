@@ -1,3 +1,4 @@
+import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
@@ -112,10 +113,13 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
           : _equipment == null
           ? const Center(child: Text('器具が見つかりません'))
           : ListView(
+              key: const Key('strength-entry-list'),
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
                 if (_previous.isNotEmpty) _previousCard(),
                 if (_previous.isNotEmpty) const SizedBox(height: 20),
+                if (_recommendation != null) _recommendationCard(),
+                if (_recommendation != null) const SizedBox(height: 20),
                 if (_isBodyweight)
                   const Card(
                     child: Padding(
@@ -238,6 +242,55 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  _StrengthRecommendation? get _recommendation =>
+      _recommendations[widget.equipmentId];
+
+  Widget _recommendationCard() {
+    final recommendation = _recommendation!;
+    return Card(
+      color: ChocoLogColors.softYellow,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('おすすめ（公式参考）', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(
+              '${recommendation.reps}回 × 3セット',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: ChocoLogColors.muted),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (recommendation.womenWeight != null)
+                  ActionChip(
+                    label: Text('女性目安 ${recommendation.womenWeight}kg'),
+                    onPressed: () => setState(() {
+                      _weightController.text = '${recommendation.womenWeight}';
+                      _repsController.text = '${recommendation.reps}';
+                    }),
+                  ),
+                if (recommendation.menWeight != null)
+                  ActionChip(
+                    label: Text('男性目安 ${recommendation.menWeight}kg'),
+                    onPressed: () => setState(() {
+                      _weightController.text = '${recommendation.menWeight}';
+                      _repsController.text = '${recommendation.reps}';
+                    }),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -412,6 +465,51 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
     return _isBodyweight ? '自重 × ${set.reps}回' : '重量未設定 × ${set.reps}回';
   }
 }
+
+class _StrengthRecommendation {
+  const _StrengthRecommendation({
+    required this.reps,
+    this.womenWeight,
+    this.menWeight,
+  });
+
+  final int reps;
+  final int? womenWeight;
+  final int? menWeight;
+}
+
+const _recommendations = <String, _StrengthRecommendation>{
+  'chest-press': _StrengthRecommendation(
+    reps: 15,
+    womenWeight: 5,
+    menWeight: 20,
+  ),
+  'shoulder-press': _StrengthRecommendation(
+    reps: 15,
+    womenWeight: 5,
+    menWeight: 5,
+  ),
+  'lat-pulldown': _StrengthRecommendation(
+    reps: 15,
+    womenWeight: 10,
+    menWeight: 20,
+  ),
+  'leg-press': _StrengthRecommendation(
+    reps: 15,
+    womenWeight: 25,
+    menWeight: 50,
+  ),
+  'adduction': _StrengthRecommendation(
+    reps: 15,
+    womenWeight: 15,
+    menWeight: 20,
+  ),
+  'abduction': _StrengthRecommendation(
+    reps: 15,
+    womenWeight: 15,
+    menWeight: 20,
+  ),
+};
 
 class _EditSetDialog extends StatefulWidget {
   const _EditSetDialog({required this.set, required this.isBodyweight});

@@ -69,11 +69,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   var _period = _ReportPeriod.week;
   var _activityMetric = _ActivityMetric.strength;
   DateTime? _selectedChartDate;
+  late DateTime _periodAnchor;
 
   @override
   void initState() {
     super.initState();
     _history = _load();
+    _periodAnchor = _dateOnly(DateTime.now());
   }
 
   @override
@@ -82,7 +84,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       if (previous != next && !next.isLoading) _reload();
     });
     return Scaffold(
-      appBar: AppBar(title: const Text('レポート')),
+      appBar: AppBar(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bar_chart_rounded, size: 25),
+            SizedBox(width: 8),
+            Text('レポート'),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Padding(
@@ -133,6 +144,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         final report = _ReportData.create(
           history: snapshot.requireData,
           period: _period,
+          anchor: _periodAnchor,
         );
         return ChocoLogRefreshIndicator(
           onRefresh: _reload,
@@ -150,15 +162,32 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 onSelectionChanged: (selection) {
                   setState(() {
                     _period = selection.single;
+                    _periodAnchor = _dateOnly(DateTime.now());
                     _selectedChartDate = null;
                   });
                 },
               ),
               const SizedBox(height: 18),
-              Text(
-                report.periodLabel,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: ChocoLogColors.muted),
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: _period == _ReportPeriod.week ? '前の週' : '前の月',
+                    onPressed: () => _changePeriod(-1),
+                    icon: const Icon(Icons.chevron_left),
+                  ),
+                  Expanded(
+                    child: Text(
+                      report.periodLabel,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: ChocoLogColors.muted),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: _period == _ReportPeriod.week ? '次の週' : '次の月',
+                    onPressed: _isCurrentPeriod ? null : () => _changePeriod(1),
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                ],
               ),
               const SizedBox(height: 14),
               if (report.sessions.isEmpty)
@@ -246,6 +275,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       _history = history;
     });
     await history;
+  }
+
+  bool get _isCurrentPeriod {
+    final today = _dateOnly(DateTime.now());
+    if (_period == _ReportPeriod.week) return !_periodAnchor.isBefore(today);
+    return _periodAnchor.year == today.year &&
+        _periodAnchor.month == today.month;
+  }
+
+  void _changePeriod(int offset) {
+    setState(() {
+      _periodAnchor = _period == _ReportPeriod.week
+          ? _periodAnchor.add(Duration(days: 7 * offset))
+          : DateTime(_periodAnchor.year, _periodAnchor.month + offset, 1);
+      _selectedChartDate = null;
+    });
   }
 }
 
@@ -870,9 +915,9 @@ class _ReportData {
   factory _ReportData.create({
     required List<WorkoutSessionSummary> history,
     required _ReportPeriod period,
+    required DateTime anchor,
   }) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = _dateOnly(anchor);
     final start = period == _ReportPeriod.week
         ? today.subtract(const Duration(days: 6))
         : DateTime(today.year, today.month);
