@@ -257,7 +257,13 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('おすすめ（公式参考）', style: Theme.of(context).textTheme.titleSmall),
+            Row(
+              children: [
+                const Icon(Icons.tips_and_updates_outlined, size: 22),
+                const SizedBox(width: 8),
+                Text('おすすめ', style: Theme.of(context).textTheme.titleSmall),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(
               '${recommendation.reps}回 × 3セット',
