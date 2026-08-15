@@ -335,8 +335,8 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 70),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        backgroundColor: ChocoLogColors.softYellow,
-        side: const BorderSide(color: ChocoLogColors.yellow, width: 2),
+        backgroundColor: ChocoLogColors.surface,
+        side: const BorderSide(color: ChocoLogColors.border, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: Row(
