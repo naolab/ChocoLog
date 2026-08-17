@@ -15,6 +15,7 @@ chocoZAP利用者向けの、筋力トレーニングと有酸素運動の記録
 - [要件定義](docs/requirements.md)
 - [画面構成・ワイヤーフレーム](docs/wireframes.md)
 - [Flutterアーキテクチャ](docs/architecture.md)
+- [友人間の記録共有計画](docs/social-sharing-plan.md)
 
 ## 開発環境
 
