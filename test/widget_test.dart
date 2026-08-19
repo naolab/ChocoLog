@@ -85,6 +85,8 @@ void main() {
       const Offset(0, -320),
     );
     await tester.pumpAndSettle();
+    expect(find.text('10 kg'), findsWidgets);
+    expect(find.text('20 kg'), findsWidgets);
     expect(find.text('このセットを追加'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
 
