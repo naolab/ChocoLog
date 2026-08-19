@@ -295,22 +295,22 @@ class _StrengthEntryScreenState extends ConsumerState<StrengthEntryScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                if (recommendation.womenWeight != null)
-                  Expanded(
-                    child: _recommendationWeightButton(
-                      label: '女性の目安',
-                      weight: recommendation.womenWeight!,
-                      recommendation: recommendation,
-                    ),
-                  ),
-                if (recommendation.womenWeight != null &&
-                    recommendation.menWeight != null)
-                  const SizedBox(width: 8),
                 if (recommendation.menWeight != null)
                   Expanded(
                     child: _recommendationWeightButton(
                       label: '男性の目安',
                       weight: recommendation.menWeight!,
+                      recommendation: recommendation,
+                    ),
+                  ),
+                if (recommendation.menWeight != null &&
+                    recommendation.womenWeight != null)
+                  const SizedBox(width: 8),
+                if (recommendation.womenWeight != null)
+                  Expanded(
+                    child: _recommendationWeightButton(
+                      label: '女性の目安',
+                      weight: recommendation.womenWeight!,
                       recommendation: recommendation,
                     ),
                   ),

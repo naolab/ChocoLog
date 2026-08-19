@@ -87,6 +87,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('10 kg'), findsWidgets);
     expect(find.text('20 kg'), findsWidgets);
+    expect(
+      tester.getCenter(find.text('男性の目安').first).dx,
+      lessThan(tester.getCenter(find.text('女性の目安').first).dx),
+    );
     expect(find.text('このセットを追加'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
 
