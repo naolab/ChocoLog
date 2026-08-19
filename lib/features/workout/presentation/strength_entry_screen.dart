@@ -553,13 +553,13 @@ class _StrengthRecommendation {
 const _recommendations = <String, _StrengthRecommendation>{
   'chest-press': _StrengthRecommendation(
     reps: 15,
-    womenWeight: 5,
+    womenWeight: 10,
     menWeight: 20,
   ),
   'shoulder-press': _StrengthRecommendation(
     reps: 15,
     womenWeight: 5,
-    menWeight: 5,
+    menWeight: 15,
   ),
   'lat-pulldown': _StrengthRecommendation(
     reps: 15,
@@ -569,17 +569,17 @@ const _recommendations = <String, _StrengthRecommendation>{
   'leg-press': _StrengthRecommendation(
     reps: 15,
     womenWeight: 25,
-    menWeight: 50,
+    menWeight: 35,
   ),
   'adduction': _StrengthRecommendation(
     reps: 15,
-    womenWeight: 15,
-    menWeight: 20,
+    womenWeight: 20,
+    menWeight: 30,
   ),
   'abduction': _StrengthRecommendation(
     reps: 15,
-    womenWeight: 15,
-    menWeight: 20,
+    womenWeight: 20,
+    menWeight: 30,
   ),
 };
 
