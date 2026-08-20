@@ -1,5 +1,6 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/features/account/data/supabase_auth_repository.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/settings/data/reminder_service.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
@@ -44,6 +45,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final session = ref.watch(supabaseSessionProvider).valueOrNull;
+
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -58,6 +61,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
+          const _SectionTitle('友人と共有'),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                session == null
+                    ? Icons.login_rounded
+                    : Icons.cloud_done_rounded,
+              ),
+              title: Text(session == null ? 'Googleでログイン' : 'ログイン中'),
+              subtitle: Text(
+                session == null
+                    ? '友人とレポート履歴を共有できます'
+                    : session.user.email ?? 'Googleアカウントでログイン中',
+              ),
+              trailing: session == null
+                  ? const Icon(Icons.chevron_right)
+                  : TextButton(onPressed: _signOut, child: const Text('ログアウト')),
+              onTap: session == null ? _signInWithGoogle : null,
+            ),
+          ),
           const _SectionTitle('トレーニング設定'),
           Card(
             child: Column(
@@ -317,6 +340,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      await ref.read(supabaseAuthRepositoryProvider).signInWithGoogle();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Googleログインを開始できませんでした: $error')));
+    }
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await ref.read(supabaseAuthRepositoryProvider).signOut();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ログアウトできませんでした: $error')));
+    }
   }
 
   Future<void> _toggleReminder(bool enabled) async {
