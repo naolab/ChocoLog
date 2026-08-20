@@ -2,7 +2,7 @@
 
 - 作成日: 2026-08-17
 - 対象: iOS先行、将来的にAndroid対応
-- ステータス: Supabase採用決定・実装前
+- ステータス: Supabase採用決定・Phase 1（接続／認証／DB基盤）実装中
 - 関連資料: [要件定義書](./requirements.md) / [Flutterアーキテクチャ](./architecture.md)
 
 ## 1. 目的
@@ -124,17 +124,18 @@ Supabase Freeでは、無料プロジェクトの一時停止や自動バック�
 ### 6.1 追加する概念
 
 ```text
-users
-public_ids
+profiles
 friend_requests
 friendships
-sync_records
 workout_sessions
+exercise_records
+exercise_sets
+sync_records（ローカルDB、次フェーズ）
 ```
 
 ### 6.2 主なフィールド
 
-#### users
+#### profiles
 
 - `id`: Supabase AuthのユーザーID
 - `public_id`: `CL-7K4P9Q`形式の公開ユーザーID
@@ -142,12 +143,7 @@ workout_sessions
 - `avatar_url`: 初版では任意。未設定ならイニシャル表示
 - `created_at`, `updated_at`
 
-#### public_ids
-
-- `public_id`: 完全一致検索用の公開ID
-- `user_id`: Supabase AuthのユーザーID
-
-公開IDは認証情報ではなく、友人申請の宛先を特定するためだけに使う。
+公開IDは`profiles.public_id`に保持する。認証情報ではなく、友人申請の宛先を特定するためだけに使う。
 
 #### friend_requests
 
