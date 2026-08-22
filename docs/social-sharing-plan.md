@@ -313,6 +313,14 @@ Supabase認証トークン確認
 - [x] 友人側の履歴一覧・詳細表示
 - [x] 友人解除後に取得できなくなるRLS連動
 
+### Phase 4 実装状況（PR #64）
+
+- [x] `integration_test`でホーム・レポート・設定の主要導線を検証
+- [x] GitHub Actionsでformat／analyze／unit test／Android buildを自動化
+- [x] macOS runnerでiOSシミュレータbuildを自動化
+- [ ] CI上のintegration_test実行（実機／シミュレータrunner導入時に追加）
+- [ ] TestFlightで自分・知人による実機ベータ検証
+
 ### Phase 3: 友人履歴
 
 - レポート履歴の「自分」「友人」切り替え
