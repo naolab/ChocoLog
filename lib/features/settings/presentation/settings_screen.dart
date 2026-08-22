@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/features/account/data/supabase_auth_repository.dart';
@@ -45,6 +47,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(supabaseSessionProvider, (previous, next) {
+      final session = next.valueOrNull;
+      if (session == null ||
+          previous?.valueOrNull?.user.id == session.user.id) {
+        return;
+      }
+      unawaited(_syncAfterLogin());
+    });
     final session = ref.watch(supabaseSessionProvider).valueOrNull;
 
     return Scaffold(
@@ -361,6 +371,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('ログアウトできませんでした: $error')));
+    }
+  }
+
+  Future<void> _syncAfterLogin() async {
+    try {
+      await ref.read(supabaseSyncRepositoryProvider).syncPending();
+    } catch (_) {
+      // Sync is best effort; local records remain available offline.
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:chocolog/core/database/app_database.dart';
+import 'package:chocolog/core/sync/sync_outbox_repository.dart';
 import 'package:chocolog/features/equipment/data/equipment_repository.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:drift/native.dart';
@@ -62,6 +63,22 @@ void main() {
     expect(previous.map((set) => set.reps), [15, 15, 12]);
     expect(summary.exercises.single.equipmentName, 'チェストプレス');
     expect(summary.totalSetCount, 3);
+  });
+
+  test('完了した記録が同期キューに入る', () async {
+    final session = await workoutRepository.startSession();
+
+    await workoutRepository.addExerciseSets(
+      sessionId: session.id,
+      equipmentId: 'chest-press',
+      sets: const [ExerciseSetValue(weightKg: 20, reps: 15)],
+    );
+    await workoutRepository.completeSession(session.id);
+
+    final pending = await database.select(database.syncOutbox).get();
+    expect(pending, hasLength(1));
+    expect(pending.single.entityId, session.id);
+    expect(pending.single.operation, SyncOperation.upsert.name);
   });
 
   test('進行中セッションを複数作成できない', () async {
