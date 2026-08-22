@@ -76,6 +76,7 @@ GoRouter createAppRouter(
                   path: 'history/:sessionId',
                   builder: (context, state) => HistoryDetailScreen(
                     sessionId: state.pathParameters['sessionId']!,
+                    ownerId: state.uri.queryParameters['ownerId'],
                   ),
                 ),
               ],

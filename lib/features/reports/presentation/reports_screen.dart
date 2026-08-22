@@ -1,7 +1,10 @@
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
+import 'package:chocolog/features/account/data/supabase_auth_repository.dart';
 import 'package:chocolog/features/equipment/presentation/equipment_image.dart';
+import 'package:chocolog/features/friends/data/supabase_friends_repository.dart';
+import 'package:chocolog/features/history/data/supabase_friend_history_repository.dart';
 import 'package:chocolog/features/history/presentation/history_screens.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
@@ -70,6 +73,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   var _activityMetric = _ActivityMetric.strength;
   DateTime? _selectedChartDate;
   late DateTime _periodAnchor;
+  Future<FriendsSnapshot>? _friendsFuture;
+  String? _selectedFriendId;
 
   @override
   void initState() {
@@ -83,6 +88,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     ref.listen(workoutFlowControllerProvider, (previous, next) {
       if (previous != next && !next.isLoading) _reload();
     });
+    final session = ref.watch(supabaseSessionProvider).valueOrNull;
+    if (session != null && _friendsFuture == null) {
+      _friendsFuture = ref.read(supabaseFriendsRepositoryProvider).load();
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -96,6 +105,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       ),
       body: Column(
         children: [
+          if (session != null) _buildOwnerPicker(),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
             child: SizedBox(
@@ -123,11 +133,55 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           Expanded(
             child: IndexedStack(
               index: _section.index,
-              children: [const HistoryScreen(embedded: true), _buildAnalysis()],
+              children: [
+                HistoryScreen(
+                  key: ValueKey('history-owner-$_selectedFriendId'),
+                  embedded: true,
+                  ownerId: _selectedFriendId,
+                ),
+                _buildAnalysis(),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildOwnerPicker() {
+    return FutureBuilder<FriendsSnapshot>(
+      future: _friendsFuture,
+      builder: (context, snapshot) {
+        final friends = snapshot.data?.friends ?? const <Friendship>[];
+        if (friends.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+          child: DropdownButtonFormField<String>(
+            initialValue: _selectedFriendId ?? 'self',
+            decoration: const InputDecoration(
+              labelText: '表示する履歴',
+              prefixIcon: Icon(Icons.people_alt_outlined),
+            ),
+            items: [
+              const DropdownMenuItem(value: 'self', child: Text('自分の履歴')),
+              for (final friend in friends)
+                DropdownMenuItem(
+                  value: friend.profile.userId,
+                  child: Text('${friend.profile.displayName}さんの履歴'),
+                ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _selectedFriendId = value == 'self' ? null : value;
+                _history = _load();
+                _selectedChartDate = null;
+                _periodAnchor = _dateOnly(DateTime.now());
+              });
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -268,8 +322,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Future<List<WorkoutSessionSummary>> _load() =>
-      ref.read(workoutRepositoryProvider).getCompletedSessionSummaries();
+  Future<List<WorkoutSessionSummary>> _load() {
+    if (_selectedFriendId != null) {
+      return ref
+          .read(supabaseFriendHistoryRepositoryProvider)
+          .load(_selectedFriendId!);
+    }
+    return ref.read(workoutRepositoryProvider).getCompletedSessionSummaries();
+  }
 
   Future<void> _reload() async {
     final history = _load();
