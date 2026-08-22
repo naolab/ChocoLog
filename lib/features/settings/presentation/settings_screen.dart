@@ -173,10 +173,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.group_rounded),
-                title: const Text('友人を管理'),
-                subtitle: const Text('公開ID・QRコードで友人を追加'),
+                title: const Text('フレンド'),
+                subtitle: const Text('友人の履歴を見たり、公開ID・QRコードで追加'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/settings/friends'),
+                onTap: () => context.push('/friends'),
               ),
             ),
           ],

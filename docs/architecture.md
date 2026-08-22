@@ -137,10 +137,12 @@ features/workout/
 
 ```text
 /home
-/history
 /reports
+/friends
 /settings
 ```
+
+`/friends/:friendId`以下では、承認済みの友人の共有履歴を表示する。
 
 ### トレーニングフロー
 

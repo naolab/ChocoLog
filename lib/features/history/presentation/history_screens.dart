@@ -46,7 +46,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         }
         final sessions = snapshot.requireData;
         if (sessions.isEmpty) {
-          return _EmptyHistory(onStart: () => context.push('/workout/studio'));
+          return _EmptyHistory(
+            isFriend: widget.ownerId != null,
+            onStart: () => context.push('/workout/studio'),
+          );
         }
 
         final latestDate = _localDate(sessions.first.session.startedAt);
@@ -105,6 +108,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     summary: summary,
                     onChanged: _reload,
                     ownerId: widget.ownerId,
+                    detailPathPrefix: widget.ownerId == null
+                        ? null
+                        : '/friends/${widget.ownerId}',
                   ),
                   const SizedBox(height: 10),
                 ],
@@ -482,11 +488,13 @@ class _SessionCard extends StatelessWidget {
     required this.summary,
     required this.onChanged,
     this.ownerId,
+    this.detailPathPrefix,
   });
 
   final WorkoutSessionSummary summary;
   final Future<void> Function() onChanged;
   final String? ownerId;
+  final String? detailPathPrefix;
 
   @override
   Widget build(BuildContext context) {
@@ -495,9 +503,10 @@ class _SessionCard extends StatelessWidget {
       child: InkWell(
         key: ValueKey('history-session-${summary.session.id}'),
         onTap: () async {
-          final changed = await context.push<bool>(
-            '/reports/history/${summary.session.id}${ownerId == null ? '' : '?ownerId=$ownerId'}',
-          );
+          final detailPath = ownerId == null
+              ? '/reports/history/${summary.session.id}'
+              : '${detailPathPrefix ?? '/friends/$ownerId'}/history/${summary.session.id}';
+          final changed = await context.push<bool>(detailPath);
           if (changed == true) await onChanged();
         },
         child: Padding(
@@ -555,8 +564,9 @@ class _SessionCard extends StatelessWidget {
 }
 
 class _EmptyHistory extends StatelessWidget {
-  const _EmptyHistory({required this.onStart});
+  const _EmptyHistory({required this.isFriend, required this.onStart});
 
+  final bool isFriend;
   final VoidCallback onStart;
 
   @override
@@ -570,12 +580,14 @@ class _EmptyHistory extends StatelessWidget {
             const Icon(Icons.calendar_month_outlined, size: 52),
             const SizedBox(height: 16),
             Text(
-              'トレーニングの記録がここに表示されます',
+              isFriend ? 'まだ共有された履歴がありません' : 'トレーニングの記録がここに表示されます',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 20),
-            FilledButton(onPressed: onStart, child: const Text('最初の記録を始める')),
+            if (!isFriend) ...[
+              const SizedBox(height: 20),
+              FilledButton(onPressed: onStart, child: const Text('最初の記録を始める')),
+            ],
           ],
         ),
       ),

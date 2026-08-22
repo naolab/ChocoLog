@@ -1,9 +1,11 @@
 import 'package:chocolog/app/theme.dart';
+import 'package:chocolog/features/account/data/supabase_auth_repository.dart';
 import 'package:chocolog/features/account/data/supabase_profile_repository.dart';
 import 'package:chocolog/features/friends/data/supabase_friends_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class FriendsScreen extends ConsumerStatefulWidget {
@@ -15,17 +17,14 @@ class FriendsScreen extends ConsumerStatefulWidget {
 
 class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   final _publicIdController = TextEditingController();
-  late Future<FriendsSnapshot> _friendsFuture;
+  Future<FriendsSnapshot>? _friendsFuture;
   Future<SupabaseProfile?>? _profileFuture;
+  String? _loadedUserId;
   var _sending = false;
 
   @override
   void initState() {
     super.initState();
-    _friendsFuture = _loadFriends();
-    _profileFuture = ref
-        .read(supabaseProfileRepositoryProvider)
-        .currentProfile();
   }
 
   @override
@@ -36,6 +35,20 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final session = ref.watch(supabaseSessionProvider).valueOrNull;
+    if (session == null) {
+      _loadedUserId = null;
+      _friendsFuture = null;
+      _profileFuture = null;
+      return const _SignInPrompt();
+    }
+    if (_loadedUserId != session.user.id) {
+      _loadedUserId = session.user.id;
+      _friendsFuture = _loadFriends();
+      _profileFuture = ref
+          .read(supabaseProfileRepositoryProvider)
+          .currentProfile();
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -53,7 +66,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
             FutureBuilder<SupabaseProfile?>(
-              future: _profileFuture,
+              future: _profileFuture!,
               builder: (context, snapshot) {
                 final profile = snapshot.data;
                 if (profile == null) return const SizedBox.shrink();
@@ -102,7 +115,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               ),
             ),
             FutureBuilder<FriendsSnapshot>(
-              future: _friendsFuture,
+              future: _friendsFuture!,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Padding(
@@ -158,12 +171,21 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                                     leading: const Icon(Icons.person_rounded),
                                     title: Text(friend.profile.displayName),
                                     subtitle: Text(friend.profile.publicId),
-                                    trailing: IconButton(
-                                      tooltip: '友人を解除',
-                                      onPressed: () => _remove(friend),
-                                      icon: const Icon(
-                                        Icons.person_remove_outlined,
-                                      ),
+                                    onTap: () => context.push(
+                                      '/friends/${friend.profile.userId}?name=${Uri.encodeComponent(friend.profile.displayName)}',
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.chevron_right),
+                                        IconButton(
+                                          tooltip: '友人を解除',
+                                          onPressed: () => _remove(friend),
+                                          icon: const Icon(
+                                            Icons.person_remove_outlined,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -191,7 +213,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           .read(supabaseProfileRepositoryProvider)
           .currentProfile();
     });
-    await _friendsFuture;
+    await _friendsFuture!;
   }
 
   Future<void> _sendRequest() async {
@@ -308,6 +330,60 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             child: const Text('閉じる'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SignInPrompt extends ConsumerWidget {
+  const _SignInPrompt();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.group_rounded, size: 25),
+            SizedBox(width: 8),
+            Text('フレンド'),
+          ],
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.group_outlined, size: 56),
+              const SizedBox(height: 16),
+              Text(
+                '友人のトレーニング履歴を見たり、\n自分の履歴を共有できます',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: () async {
+                  try {
+                    await ref
+                        .read(supabaseAuthRepositoryProvider)
+                        .signInWithGoogle();
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('ログインを開始できませんでした: $error')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.login_rounded),
+                label: const Text('Googleでログイン'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
