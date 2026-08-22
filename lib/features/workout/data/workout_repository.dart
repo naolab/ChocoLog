@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:chocolog/core/database/app_database.dart';
+import 'package:chocolog/core/sync/sync_outbox_repository.dart';
 import 'package:drift/drift.dart';
 
 typedef IdGenerator = String Function();
@@ -112,13 +113,19 @@ class CardioRecordSnapshot {
 }
 
 class WorkoutRepository {
-  WorkoutRepository(this._database, {IdGenerator? idGenerator, Now? now})
-    : _idGenerator = idGenerator ?? _defaultId,
-      _now = now ?? _utcNow;
+  WorkoutRepository(
+    this._database, {
+    IdGenerator? idGenerator,
+    Now? now,
+    SyncOutboxRepository? syncOutbox,
+  }) : _idGenerator = idGenerator ?? _defaultId,
+       _now = now ?? _utcNow,
+       _syncOutbox = syncOutbox ?? SyncOutboxRepository(_database);
 
   final AppDatabase _database;
   final IdGenerator _idGenerator;
   final Now _now;
+  final SyncOutboxRepository _syncOutbox;
 
   static final _random = Random.secure();
 
@@ -291,6 +298,7 @@ class WorkoutRepository {
             ),
         ]);
       });
+      await _syncOutbox.enqueueUpsert(sessionId);
       return recordId;
     });
   }
@@ -408,6 +416,7 @@ class WorkoutRepository {
         updatedAt: Value(now),
       );
       await _database.into(_database.exerciseRecords).insert(row);
+      await _syncOutbox.enqueueUpsert(sessionId);
       return (await getCardioRecord(
         sessionId: sessionId,
         equipmentId: equipmentId,
@@ -466,6 +475,7 @@ class WorkoutRepository {
         updatedAt: Value(now),
       );
       await _database.into(_database.exerciseRecords).insert(row);
+      await _syncOutbox.enqueueUpsert(sessionId);
       return _cardioFromRow(
         await (_database.select(
           _database.exerciseRecords,
@@ -487,6 +497,7 @@ class WorkoutRepository {
         updatedAt: Value(now),
       ),
     );
+    await _syncOutbox.enqueueUpsert(row.workoutSessionId);
     return _cardioFromRow(
       await (_database.select(
         _database.exerciseRecords,
@@ -513,6 +524,7 @@ class WorkoutRepository {
         updatedAt: Value(now),
       ),
     );
+    await _syncOutbox.enqueueUpsert(row.workoutSessionId);
     return _cardioFromRow(
       await (_database.select(
         _database.exerciseRecords,
@@ -544,6 +556,7 @@ class WorkoutRepository {
         updatedAt: Value(now),
       ),
     );
+    await _syncOutbox.enqueueUpsert(row.workoutSessionId);
     return _cardioFromRow(
       await (_database.select(
         _database.exerciseRecords,
@@ -638,6 +651,7 @@ class WorkoutRepository {
       }
       return duplicated;
     } catch (_) {
+      await _syncOutbox.enqueueDelete(duplicated.id);
       await (_database.delete(
         _database.workoutSessions,
       )..where((row) => row.id.equals(duplicated.id))).go();
@@ -652,6 +666,7 @@ class WorkoutRepository {
     if (session == null || session.status != 'completed') {
       throw StateError('削除できる完了済み記録が見つかりません');
     }
+    await _syncOutbox.enqueueDelete(sessionId);
     await (_database.delete(
       _database.workoutSessions,
     )..where((row) => row.id.equals(sessionId))).go();
@@ -659,6 +674,10 @@ class WorkoutRepository {
 
   Future<void> deleteAllWorkoutSessions() async {
     await _database.transaction(() async {
+      final sessions = await _database.select(_database.workoutSessions).get();
+      for (final session in sessions) {
+        await _syncOutbox.enqueueDelete(session.id);
+      }
       await _database.delete(_database.exerciseSets).go();
       await _database.delete(_database.exerciseRecords).go();
       await _database.delete(_database.workoutSessions).go();
@@ -677,6 +696,7 @@ class WorkoutRepository {
                 ..limit(1))
               .getSingleOrNull();
       if (record != null) return;
+      await _syncOutbox.enqueueDelete(sessionId);
       await (_database.delete(
         _database.workoutSessions,
       )..where((row) => row.id.equals(sessionId))).go();
@@ -707,12 +727,14 @@ class WorkoutRepository {
         updatedAt: Value(timestamp),
       ),
     );
+    await _syncOutbox.enqueueUpsert(record.workoutSessionId);
   }
 
   Future<void> deleteExerciseSet(String setId) async {
     await _database.transaction(() async {
       final result = await _editableSet(setId);
       final set = result.readTable(_database.exerciseSets);
+      final session = result.readTable(_database.workoutSessions);
       await (_database.delete(
         _database.exerciseSets,
       )..where((row) => row.id.equals(setId))).go();
@@ -724,6 +746,7 @@ class WorkoutRepository {
         await (_database.delete(
           _database.exerciseRecords,
         )..where((row) => row.id.equals(set.exerciseRecordId))).go();
+        await _syncOutbox.enqueueUpsert(session.id);
         return;
       }
       for (final (index, row) in remaining.indexed) {
@@ -733,6 +756,7 @@ class WorkoutRepository {
               ..where((item) => item.id.equals(row.id)))
             .write(ExerciseSetsCompanion(setNumber: Value(nextNumber)));
       }
+      await _syncOutbox.enqueueUpsert(session.id);
     });
   }
 
@@ -750,6 +774,7 @@ class WorkoutRepository {
           ),
         );
     if (updated == 0) throw StateError('セッションが見つかりません');
+    await _syncOutbox.enqueueUpsert(sessionId);
   }
 
   Future<void> completeSession(String sessionId) async {
@@ -793,6 +818,7 @@ class WorkoutRepository {
           updatedAt: Value(endedAt),
         ),
       );
+      await _syncOutbox.enqueueUpsert(sessionId);
     });
   }
 

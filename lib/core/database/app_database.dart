@@ -96,19 +96,47 @@ class ExerciseSets extends Table {
   ];
 }
 
+@DataClassName('SyncOutboxRow')
+class SyncOutbox extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+  TextColumn get operation => text()();
+  IntColumn get attemptCount => integer().withDefault(const Constant(0))();
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
+  DateTimeColumn get updatedAt =>
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+    {entityType, entityId},
+  ];
+}
+
 @DriftDatabase(
-  tables: [Equipment, WorkoutSessions, ExerciseRecords, ExerciseSets],
+  tables: [
+    Equipment,
+    WorkoutSessions,
+    ExerciseRecords,
+    ExerciseSets,
+    SyncOutbox,
+  ],
 )
 final class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'chocolog'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) await migrator.createTable(syncOutbox);
+    },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );
 }

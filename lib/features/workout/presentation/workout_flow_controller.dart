@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/sync/supabase_sync_repository.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,14 +10,19 @@ final workoutFlowControllerProvider =
       WorkoutFlowController,
       AsyncValue<WorkoutSessionSnapshot?>
     >((ref) {
-      return WorkoutFlowController(ref.watch(workoutRepositoryProvider));
+      return WorkoutFlowController(
+        ref.watch(workoutRepositoryProvider),
+        ref.watch(supabaseSyncRepositoryProvider),
+      );
     });
 
 class WorkoutFlowController
     extends StateNotifier<AsyncValue<WorkoutSessionSnapshot?>> {
-  WorkoutFlowController(this._repository) : super(const AsyncData(null));
+  WorkoutFlowController(this._repository, [this._syncRepository])
+    : super(const AsyncData(null));
 
   final WorkoutRepository _repository;
+  final SupabaseSyncRepository? _syncRepository;
 
   Future<WorkoutSessionSnapshot> ensureSession({String? studioId}) async {
     state = const AsyncLoading();
@@ -49,6 +57,7 @@ class WorkoutFlowController
         equipmentId: equipmentId,
       );
       await _repository.completeSession(session.id);
+      _syncInBackground();
       state = const AsyncData(null);
       return savedSets;
     } catch (error, stackTrace) {
@@ -83,6 +92,7 @@ class WorkoutFlowController
       equipmentId: equipmentId,
     );
     await _repository.completeSession(session.id);
+    _syncInBackground();
     state = const AsyncData(null);
     return saved;
   }
@@ -102,6 +112,7 @@ class WorkoutFlowController
       await _repository.deleteEmptyDraftSession(session.id);
     } else {
       await _repository.completeSession(session.id);
+      _syncInBackground();
     }
     state = const AsyncData(null);
     return saved;
@@ -145,6 +156,7 @@ class WorkoutFlowController
         distanceKm: distanceKm,
       );
       await _repository.completeSession(session.id);
+      _syncInBackground();
       state = const AsyncData(null);
       return record;
     } catch (error, stackTrace) {
@@ -168,6 +180,7 @@ class WorkoutFlowController
       distanceKm: distanceKm,
     );
     await _repository.completeSession(record.sessionId);
+    _syncInBackground();
     state = const AsyncData(null);
     return record;
   }
@@ -183,6 +196,7 @@ class WorkoutFlowController
     }
     try {
       await _repository.completeSession(session.id);
+      _syncInBackground();
     } on StateError {
       // 計測中の有酸素記録は、終了操作まで進行中のまま維持する。
       return;
@@ -207,6 +221,7 @@ class WorkoutFlowController
     final session = await _requireActiveSession();
     await _repository.updateSessionNote(session.id, note);
     await _repository.completeSession(session.id);
+    _syncInBackground();
     state = const AsyncData(null);
     return session.id;
   }
@@ -218,6 +233,7 @@ class WorkoutFlowController
         sourceSessionId,
       );
       await _repository.completeSession(session.id);
+      _syncInBackground();
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -231,6 +247,19 @@ class WorkoutFlowController
       throw StateError('進行中のトレーニングがありません');
     }
     return session;
+  }
+
+  void _syncInBackground() {
+    if (_syncRepository == null) return;
+    unawaited(_runSyncInBackground());
+  }
+
+  Future<void> _runSyncInBackground() async {
+    try {
+      await _syncRepository?.syncPending();
+    } catch (_) {
+      // Cloud sync must never block local recording.
+    }
   }
 
   Future<WorkoutSessionSnapshot> _editableTodaySession({
