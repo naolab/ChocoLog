@@ -2,6 +2,7 @@ import 'package:chocolog/features/equipment/presentation/equipment_selection_scr
 import 'package:chocolog/features/history/presentation/history_screens.dart';
 import 'package:chocolog/features/home/presentation/home_screen.dart';
 import 'package:chocolog/features/friends/presentation/friends_screen.dart';
+import 'package:chocolog/features/friends/presentation/friend_history_screen.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:chocolog/features/reports/presentation/reports_screen.dart';
@@ -86,6 +87,32 @@ GoRouter createAppRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
+              path: '/friends',
+              builder: (context, state) => const FriendsScreen(),
+              routes: [
+                GoRoute(
+                  path: ':friendId',
+                  builder: (context, state) => FriendHistoryScreen(
+                    ownerId: state.pathParameters['friendId']!,
+                    displayName: state.uri.queryParameters['name'],
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: 'history/:sessionId',
+                      builder: (context, state) => HistoryDetailScreen(
+                        sessionId: state.pathParameters['sessionId']!,
+                        ownerId: state.pathParameters['friendId'],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
               path: '/settings',
               builder: (context, state) =>
                   SettingsScreen(preferences: onboardingPreferences),
@@ -112,10 +139,7 @@ GoRouter createAppRouter(
       path: '/settings/studios',
       builder: (context, state) => const StudioSearchScreen(),
     ),
-    GoRoute(
-      path: '/settings/friends',
-      builder: (context, state) => const FriendsScreen(),
-    ),
+    GoRoute(path: '/settings/friends', redirect: (_, _) => '/friends'),
     GoRoute(
       path: '/workout/equipment',
       builder: (context, state) => const EquipmentSelectionScreen(),
@@ -209,6 +233,13 @@ class _AppShell extends StatelessWidget {
                   icon: Icons.bar_chart_outlined,
                 ),
                 label: 'レポート',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.group_outlined),
+                selectedIcon: _SelectedNavigationIcon(
+                  icon: Icons.group_outlined,
+                ),
+                label: 'フレンド',
               ),
               NavigationDestination(
                 icon: Icon(Icons.settings_outlined),

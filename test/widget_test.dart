@@ -60,7 +60,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   });
 
-  testWidgets('完了済みならホームから通常3タブへ移動できる', (tester) async {
+  testWidgets('完了済みならホームから4タブへ移動できる', (tester) async {
     SharedPreferences.setMockInitialValues({'onboarding.completed': true});
     final preferences = await OnboardingPreferences.load();
     final database = AppDatabase(NativeDatabase.memory());
@@ -76,6 +76,7 @@ void main() {
 
     expect(find.text('器具を選んで記録'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
 
     await tester.tap(find.text('チェストプレス'));
     await tester.pumpAndSettle();
@@ -103,6 +104,10 @@ void main() {
     await tester.tap(find.text('分析'));
     await tester.pumpAndSettle();
     expect(find.text('この期間の記録はありません'), findsOneWidget);
+
+    await tester.tap(find.text('フレンド'));
+    await tester.pumpAndSettle();
+    expect(find.text('友人のトレーニング履歴を見たり、\n自分の履歴を共有できます'), findsOneWidget);
 
     await tester.tap(find.text('設定').last);
     await tester.pumpAndSettle();
