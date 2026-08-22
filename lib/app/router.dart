@@ -1,6 +1,7 @@
 import 'package:chocolog/features/equipment/presentation/equipment_selection_screen.dart';
 import 'package:chocolog/features/history/presentation/history_screens.dart';
 import 'package:chocolog/features/home/presentation/home_screen.dart';
+import 'package:chocolog/features/friends/presentation/friends_screen.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:chocolog/features/reports/presentation/reports_screen.dart';
@@ -109,6 +110,10 @@ GoRouter createAppRouter(
     GoRoute(
       path: '/settings/studios',
       builder: (context, state) => const StudioSearchScreen(),
+    ),
+    GoRoute(
+      path: '/settings/friends',
+      builder: (context, state) => const FriendsScreen(),
     ),
     GoRoute(
       path: '/workout/equipment',
