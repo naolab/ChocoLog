@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
+import 'package:chocolog/core/sync/supabase_sync_repository.dart';
 import 'package:chocolog/features/account/data/supabase_auth_repository.dart';
+import 'package:chocolog/features/account/data/supabase_profile_repository.dart';
 import 'package:chocolog/features/onboarding/data/onboarding_preferences.dart';
 import 'package:chocolog/features/settings/data/reminder_service.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -27,6 +30,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TimeOfDay _time;
   var _saving = false;
   late Future<StudioItem?> _preferredStudio;
+  Future<SupabaseProfile?>? _profileFuture;
+  SyncResult? _lastSyncResult;
+  var _syncing = false;
+  var _pendingSync = 0;
 
   @override
   void initState() {
@@ -43,19 +50,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       minute: preferences.reminderMinute,
     );
     _preferredStudio = StudioRepository.instance.preferredStudio();
+    unawaited(_refreshSyncStatus());
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen(supabaseSessionProvider, (previous, next) {
       final session = next.valueOrNull;
-      if (session == null ||
-          previous?.valueOrNull?.user.id == session.user.id) {
+      if (session == null) {
+        if (mounted) {
+          setState(() {
+            _profileFuture = null;
+            _lastSyncResult = null;
+          });
+        }
         return;
       }
+      if (previous?.valueOrNull?.user.id == session.user.id) {
+        return;
+      }
+      setState(() {
+        _profileFuture = ref
+            .read(supabaseProfileRepositoryProvider)
+            .currentProfile();
+      });
       unawaited(_syncAfterLogin());
     });
     final session = ref.watch(supabaseSessionProvider).valueOrNull;
+    if (session != null && _profileFuture == null) {
+      _profileFuture = ref
+          .read(supabaseProfileRepositoryProvider)
+          .currentProfile();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -72,25 +98,78 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           const _SectionTitle('友人と共有'),
-          Card(
-            child: ListTile(
-              leading: Icon(
-                session == null
-                    ? Icons.login_rounded
-                    : Icons.cloud_done_rounded,
+          if (session == null)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.login_rounded),
+                title: const Text('Googleでログイン'),
+                subtitle: const Text('友人とレポート履歴を共有できます'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _signInWithGoogle,
               ),
-              title: Text(session == null ? 'Googleでログイン' : 'ログイン中'),
-              subtitle: Text(
-                session == null
-                    ? '友人とレポート履歴を共有できます'
-                    : session.user.email ?? 'Googleアカウントでログイン中',
+            )
+          else ...[
+            Card(
+              child: FutureBuilder<SupabaseProfile?>(
+                future: _profileFuture,
+                builder: (context, snapshot) {
+                  final profile = snapshot.data;
+                  return Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.account_circle_rounded),
+                        title: Text(profile?.displayName ?? 'ログイン中'),
+                        subtitle: Text(
+                          profile == null
+                              ? session.user.email ?? 'Googleアカウントでログイン中'
+                              : '公開ID  ${profile.publicId}',
+                        ),
+                        trailing: TextButton(
+                          onPressed: profile == null
+                              ? null
+                              : () => _showDisplayNameEditor(profile),
+                          child: const Text('編集'),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.copy_rounded),
+                        title: const Text('公開IDをコピー'),
+                        subtitle: const Text('友人追加に使うIDです'),
+                        onTap: profile == null
+                            ? null
+                            : () => _copyPublicId(profile.publicId),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.logout_rounded),
+                        title: const Text('ログアウト'),
+                        onTap: _signOut,
+                      ),
+                    ],
+                  );
+                },
               ),
-              trailing: session == null
-                  ? const Icon(Icons.chevron_right)
-                  : TextButton(onPressed: _signOut, child: const Text('ログアウト')),
-              onTap: session == null ? _signInWithGoogle : null,
             ),
-          ),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  _syncing
+                      ? Icons.sync_rounded
+                      : _lastSyncResult?.failed == 0
+                      ? Icons.cloud_done_rounded
+                      : Icons.cloud_off_rounded,
+                ),
+                title: const Text('クラウド同期'),
+                subtitle: Text(_syncStatusLabel),
+                trailing: TextButton(
+                  onPressed: _syncing ? null : _syncNow,
+                  child: const Text('今すぐ同期'),
+                ),
+              ),
+            ),
+          ],
           const _SectionTitle('トレーニング設定'),
           Card(
             child: Column(
@@ -376,9 +455,107 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _syncAfterLogin() async {
     try {
-      await ref.read(supabaseSyncRepositoryProvider).syncPending();
+      final result = await ref
+          .read(supabaseSyncRepositoryProvider)
+          .syncPending();
+      if (!mounted) return;
+      setState(() => _lastSyncResult = result);
+      await _refreshSyncStatus();
     } catch (_) {
       // Sync is best effort; local records remain available offline.
+    }
+  }
+
+  String get _syncStatusLabel {
+    if (_syncing) return '同期しています…';
+    final result = _lastSyncResult;
+    if (result?.failed case final failed? when failed > 0) {
+      return '失敗 $failed件・未同期 $_pendingSync件';
+    }
+    if (_pendingSync > 0) return '未同期 $_pendingSync件';
+    if (result != null) return '最新の状態です';
+    return '同期状態を確認できます';
+  }
+
+  Future<void> _refreshSyncStatus() async {
+    final pending = await ref.read(syncOutboxRepositoryProvider).pendingCount();
+    if (!mounted) return;
+    setState(() => _pendingSync = pending);
+  }
+
+  Future<void> _syncNow() async {
+    setState(() => _syncing = true);
+    try {
+      final result = await ref
+          .read(supabaseSyncRepositoryProvider)
+          .syncPending();
+      if (!mounted) return;
+      setState(() {
+        _lastSyncResult = result;
+        _syncing = false;
+      });
+      await _refreshSyncStatus();
+      if (result.failed > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${result.failed}件の同期に失敗しました。後で再試行できます')),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _syncing = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('同期できませんでした: $error')));
+      await _refreshSyncStatus();
+    }
+  }
+
+  Future<void> _copyPublicId(String publicId) async {
+    await Clipboard.setData(ClipboardData(text: publicId));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('公開IDをコピーしました')));
+  }
+
+  Future<void> _showDisplayNameEditor(SupabaseProfile profile) async {
+    final controller = TextEditingController(text: profile.displayName);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('表示名を変更'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 30,
+          decoration: const InputDecoration(labelText: '表示名'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value == null || !mounted) return;
+    try {
+      setState(() {
+        _profileFuture = ref
+            .read(supabaseProfileRepositoryProvider)
+            .updateDisplayName(value);
+      });
+      await _profileFuture;
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('表示名を更新できませんでした: $error')));
     }
   }
 
@@ -467,7 +644,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (context) => const AlertDialog(
         title: Text('記録の保存場所'),
-        content: Text('記録はこの端末内だけに保存されます。現在はクラウド同期や、端末紛失・削除後の復元には対応していません。'),
+        content: Text(
+          '記録は端末に保存されます。ログイン中は完了した履歴をSupabaseへ同期し、友人と共有できます。未ログインでも端末内の記録はそのまま利用できます。',
+        ),
       ),
     );
   }
