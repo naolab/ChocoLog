@@ -2,6 +2,7 @@ import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/equipment/presentation/equipment_image.dart';
+import 'package:chocolog/features/history/data/supabase_friend_history_repository.dart';
 import 'package:chocolog/features/workout/data/workout_repository.dart';
 import 'package:chocolog/features/workout/presentation/workout_flow_controller.dart';
 import 'package:flutter/material.dart';
@@ -9,9 +10,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
-  const HistoryScreen({super.key, this.embedded = false});
+  const HistoryScreen({super.key, this.embedded = false, this.ownerId});
 
   final bool embedded;
+  final String? ownerId;
 
   @override
   ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
@@ -99,7 +101,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 )
               else
                 for (final summary in selectedSessions) ...[
-                  _SessionCard(summary: summary, onChanged: _reload),
+                  _SessionCard(
+                    summary: summary,
+                    onChanged: _reload,
+                    ownerId: widget.ownerId,
+                  ),
                   const SizedBox(height: 10),
                 ],
             ],
@@ -115,6 +121,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Future<List<WorkoutSessionSummary>> _loadHistory() {
+    if (widget.ownerId != null) {
+      return ref
+          .read(supabaseFriendHistoryRepositoryProvider)
+          .load(widget.ownerId!);
+    }
     return ref.read(workoutRepositoryProvider).getCompletedSessionSummaries();
   }
 
@@ -140,9 +151,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 }
 
 class HistoryDetailScreen extends ConsumerStatefulWidget {
-  const HistoryDetailScreen({super.key, required this.sessionId});
+  const HistoryDetailScreen({super.key, required this.sessionId, this.ownerId});
 
   final String sessionId;
+  final String? ownerId;
 
   @override
   ConsumerState<HistoryDetailScreen> createState() =>
@@ -156,9 +168,18 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _summary = ref
-        .read(workoutRepositoryProvider)
-        .getSessionSummary(widget.sessionId);
+    _summary = widget.ownerId == null
+        ? ref
+              .read(workoutRepositoryProvider)
+              .getSessionSummary(widget.sessionId)
+        : ref
+              .read(supabaseFriendHistoryRepositoryProvider)
+              .load(widget.ownerId!)
+              .then(
+                (summaries) => summaries.firstWhere(
+                  (summary) => summary.session.id == widget.sessionId,
+                ),
+              );
   }
 
   @override
@@ -239,21 +260,23 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
                 ),
                 const SizedBox(height: 10),
               ],
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: _processing ? null : _duplicate,
-                icon: const Icon(Icons.copy_outlined),
-                label: const Text('このメニューを複製'),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: _processing ? null : _confirmDelete,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('この記録を削除'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+              if (widget.ownerId == null) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: _processing ? null : _duplicate,
+                  icon: const Icon(Icons.copy_outlined),
+                  label: const Text('このメニューを複製'),
                 ),
-              ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _processing ? null : _confirmDelete,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('この記録を削除'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -455,10 +478,15 @@ class _MonthCalendar extends StatelessWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.summary, required this.onChanged});
+  const _SessionCard({
+    required this.summary,
+    required this.onChanged,
+    this.ownerId,
+  });
 
   final WorkoutSessionSummary summary;
   final Future<void> Function() onChanged;
+  final String? ownerId;
 
   @override
   Widget build(BuildContext context) {
@@ -468,7 +496,7 @@ class _SessionCard extends StatelessWidget {
         key: ValueKey('history-session-${summary.session.id}'),
         onTap: () async {
           final changed = await context.push<bool>(
-            '/reports/history/${summary.session.id}',
+            '/reports/history/${summary.session.id}${ownerId == null ? '' : '?ownerId=$ownerId'}',
           );
           if (changed == true) await onChanged();
         },
