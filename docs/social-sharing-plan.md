@@ -317,7 +317,7 @@ Supabase認証トークン確認
 
 - [x] `integration_test`でホーム・レポート・設定の主要導線を検証
 - [x] GitHub Actionsでformat／analyze／unit test／Android buildを自動化
-- [x] macOS runnerでiOS no-code-sign buildを自動化
+- [x] macOS runnerでiOSシミュレータbuildを自動化
 - [ ] CI上のintegration_test実行（実機／シミュレータrunner導入時に追加）
 - [ ] TestFlightで自分・知人による実機ベータ検証
 
