@@ -169,6 +169,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.group_rounded),
+                title: const Text('友人を管理'),
+                subtitle: const Text('公開ID・QRコードで友人を追加'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/settings/friends'),
+              ),
+            ),
           ],
           const _SectionTitle('トレーニング設定'),
           Card(
