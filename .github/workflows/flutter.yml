@@ -33,4 +33,5 @@ jobs:
           flutter-version: 3.44.9
           cache: true
       - run: flutter pub get
-      - run: flutter build ios --simulator
+      # Simulator artifacts do not need an Apple Development Team or provisioning profile.
+      - run: flutter build ios --simulator --no-codesign
