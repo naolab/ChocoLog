@@ -21,6 +21,20 @@ GoRouter createAppRouter(
 ) => GoRouter(
   initialLocation: onboardingPreferences.isCompleted ? '/home' : '/onboarding',
   redirect: (context, state) {
+    // Supabase Flutter consumes the OAuth callback and exchanges its `code`
+    // for a session, but GoRouter also receives the same deep link from the
+    // platform. Redirect it to a valid in-app route so it is not treated as
+    // an unknown location (which would show a Page Not Found error).
+    final isSupabaseAuthCallback =
+        state.uri.scheme == 'chocolog' &&
+        state.uri.host == 'login-callback' &&
+        (state.uri.queryParameters.containsKey('code') ||
+            state.uri.queryParameters.containsKey('access_token') ||
+            state.uri.queryParameters.containsKey('error'));
+    if (isSupabaseAuthCallback) {
+      return onboardingPreferences.isCompleted ? '/friends' : '/onboarding';
+    }
+
     final isOnboarding = state.matchedLocation == '/onboarding';
     if (!onboardingPreferences.isCompleted) {
       return isOnboarding ? null : '/onboarding';
