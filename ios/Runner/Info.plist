@@ -37,6 +37,10 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Supabase Flutter uses app_links for OAuth callbacks. Disable Flutter's
+	     built-in deep-link forwarding to avoid duplicate delivery to GoRouter. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
