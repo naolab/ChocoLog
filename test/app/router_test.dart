@@ -6,9 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('Supabaseの認証コールバックをフレンド画面へリダイレクトする', (
-    tester,
-  ) async {
+  testWidgets('Supabaseの認証コールバックをフレンド画面へリダイレクトする', (tester) async {
     SharedPreferences.setMockInitialValues({'onboarding.completed': true});
     final preferences = await OnboardingPreferences.load();
     final router = createAppRouter(preferences);
