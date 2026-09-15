@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
 import 'package:chocolog/features/studios/data/studio_repository.dart';
@@ -14,6 +16,7 @@ class StudioSearchScreen extends StatefulWidget {
 
 class _StudioSearchScreenState extends State<StudioSearchScreen> {
   late Future<List<StudioItem>> _studios;
+  late final StreamSubscription<List<StudioItem>> _studioUpdatesSubscription;
   Set<String> _favoriteIds = {};
   var _query = '';
 
@@ -21,6 +24,18 @@ class _StudioSearchScreenState extends State<StudioSearchScreen> {
   void initState() {
     super.initState();
     _studios = _load();
+    _studioUpdatesSubscription = StudioRepository.instance.updates.listen((
+      studios,
+    ) {
+      if (!mounted) return;
+      setState(() => _studios = Future.value(studios));
+    });
+  }
+
+  @override
+  void dispose() {
+    _studioUpdatesSubscription.cancel();
+    super.dispose();
   }
 
   @override
