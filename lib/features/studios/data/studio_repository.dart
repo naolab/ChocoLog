@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -53,20 +54,41 @@ class StudioRepository {
   static const _cacheLifetime = Duration(hours: 24);
 
   List<StudioItem>? _memoryCache;
+  DateTime? _memoryCacheUpdatedAt;
+  Future<void>? _refreshFuture;
+  final _updatesController = StreamController<List<StudioItem>>.broadcast();
+
+  /// Emits fresh store data after a stale-cache background refresh completes.
+  Stream<List<StudioItem>> get updates => _updatesController.stream;
 
   Future<List<StudioItem>> load({bool forceRefresh = false}) async {
-    if (!forceRefresh && _memoryCache != null) return _memoryCache!;
-    final cached = await _readCache();
-    if (!forceRefresh && cached != null && !cached.isExpired) {
-      return _memoryCache = cached.items;
+    if (!forceRefresh && _memoryCache != null) {
+      if (_memoryCacheUpdatedAt != null &&
+          DateTime.now().toUtc().difference(_memoryCacheUpdatedAt!) >
+              _cacheLifetime) {
+        unawaited(_refreshInBackground());
+      }
+      return _memoryCache!;
     }
+
+    final cached = await _readCache();
+    if (!forceRefresh && cached != null) {
+      _setMemoryCache(cached.items, cached.updatedAt);
+      if (cached.isExpired) {
+        // Stale data is still useful for rendering the home/search screens.
+        // Refresh it in the background instead of blocking the first frame.
+        unawaited(_refreshInBackground());
+      }
+      return cached.items;
+    }
+
     try {
-      final fresh = await _fetch();
-      _memoryCache = fresh;
-      await _writeCache(fresh);
-      return fresh;
+      return await _refresh();
     } catch (_) {
-      if (cached != null) return _memoryCache = cached.items;
+      if (cached != null) {
+        _setMemoryCache(cached.items, cached.updatedAt);
+        return cached.items;
+      }
       rethrow;
     }
   }
@@ -152,6 +174,39 @@ class StudioRepository {
       throw const HttpException('店舗情報を取得できませんでした');
     }
     return parseStudioCatalog(responses[0].body, responses[1].body);
+  }
+
+  Future<List<StudioItem>> _refresh() async {
+    final fresh = await _fetch();
+    final updatedAt = DateTime.now().toUtc();
+    _setMemoryCache(fresh, updatedAt);
+    await _writeCache(fresh);
+    _updatesController.add(fresh);
+    return fresh;
+  }
+
+  Future<void> _refreshInBackground() {
+    final ongoing = _refreshFuture;
+    if (ongoing != null) return ongoing;
+
+    final future = _refresh().then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {
+        // The stale cache remains usable when the network is unavailable.
+      },
+    );
+    _refreshFuture = future;
+    unawaited(
+      future.whenComplete(() {
+        if (identical(_refreshFuture, future)) _refreshFuture = null;
+      }),
+    );
+    return future;
+  }
+
+  void _setMemoryCache(List<StudioItem> items, DateTime updatedAt) {
+    _memoryCache = items;
+    _memoryCacheUpdatedAt = updatedAt;
   }
 
   Future<_StudioCache?> _readCache() async {

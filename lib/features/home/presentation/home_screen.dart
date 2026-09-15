@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chocolog/app/theme.dart';
 import 'package:chocolog/core/database/database_providers.dart';
 import 'package:chocolog/core/widgets/chocolog_loading_indicator.dart';
@@ -18,6 +20,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late Future<_HomeData> _data;
+  late final StreamSubscription<List<StudioItem>> _studioUpdatesSubscription;
   String? _openingEquipmentId;
   var _showAllEquipment = false;
 
@@ -25,6 +28,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _data = _loadData();
+    _studioUpdatesSubscription = StudioRepository.instance.updates.listen((_) {
+      if (mounted) unawaited(_reload());
+    });
+  }
+
+  @override
+  void dispose() {
+    _studioUpdatesSubscription.cancel();
+    super.dispose();
   }
 
   @override
